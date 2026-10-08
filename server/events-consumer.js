@@ -19,6 +19,11 @@
  *
  * Which field carries the person, and what is ignored, is ./quests/apply.js.
  *
+ * Two more topics are account export and deletion (ADR-033): network.account.export_requested and
+ * network.account.deleted are handed straight to openvibe-sdk/account-data (server/identity/account-data.js — the
+ * table map), which keeps its own idempotency in account_data_events. They never pass through quest_event_inbox:
+ * they are a person's rows leaving, not a quest moving, and apply() answers 'exported' / 'erased' / 'confirmed'.
+ *
  * Exactly once: the openvibe-sdk inbox claims (consumer, event_id) in the same transaction as the writes. A
  * replay of the same event is answered 200 with duplicate:true and changes nothing. Signature v2 only
  * (parseDelivery requireV2) under QUEST_EVENTS_SECRET (comma-separated for rotation, 32+ characters each); unset
@@ -29,12 +34,14 @@ const { http, serviceAuth } = require('openvibe-contracts');
 const { parseDelivery, createPgInbox } = require('openvibe-sdk/events');
 const catalog = require('./quests/catalog');
 const { apply } = require('./quests/apply');
+const accountDataLib = require('./identity/account-data');
 
 const CONSUMER = 'quest';
-const TOPICS = catalog.EVENT_TYPES;
+// The catalog's events plus the two account topics (ADR-033): one subscription list, so boot subscribes to both.
+const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS]);
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
-function createEventsConsumer({ db, s, secrets = [], coins = null, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, s, secrets = [], coins = null, accountData = null, accountSend = null, now = () => Date.now(), log = console }) {
     const keys = (secrets || []).filter((x) => typeof x === 'string' && x.length >= 32);
     // Receipts (quest_event_inbox) are in migrations/0002_quest.sql.
     const inbox = createPgInbox(db, { table: 'quest_event_inbox', now });
@@ -53,6 +60,23 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, now = () => D
         const event = delivery.event;
         if (!event || !EVENT_ID_RE.test(String(event.event_id || '')) || typeof event.event_type !== 'string') { stats.refused++; return problem(400, 'quest.bad_delivery', 'body must be { event: <envelope>, seq }'); }
         stats.received++; stats.last_at = new Date(now()).toISOString();
+
+        // Account export and deletion (ADR-033) are not quest events: openvibe-sdk/account-data answers them with
+        // its own idempotency (account_data_events), so they never touch quest_event_inbox. An ignored payload is
+        // answered 200; a refusal worth retrying throws and asks Events to redeliver.
+        if (accountData && accountData.TOPICS.includes(event.event_type)) {
+            let accountOutcome;
+            try {
+                accountOutcome = await accountData.apply(event, { send: accountSend });
+            } catch (err) {
+                stats.failed++;
+                log.error(`[Events consumer] ${event.event_id} (${event.event_type}) failed:`, err.message);
+                return problem(503, 'quest.event_failed', 'processing failed; it will be retried');
+            }
+            if (String(accountOutcome).startsWith('ignored:')) stats.ignored++;
+            else stats.applied++;
+            return res.json({ event_id: event.event_id, outcome: accountOutcome });
+        }
 
         let outcome;
         try {

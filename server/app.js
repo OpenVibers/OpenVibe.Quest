@@ -30,6 +30,8 @@ const { createApi } = require('./http/api');
 const { createPageRoutes } = require('./http/pages');
 const { createCoins } = require('./quests/coins');
 const { createEventsConsumer } = require('./events-consumer');
+const accountDataLib = require('./identity/account-data');
+const { createNetworkSender } = require('openvibe-sdk/account-data');
 const { createServiceReadiness } = require('./observability');
 const { createCallerLimits } = require('./http/caller-limits');
 const { assetVersion, send } = require('./render/layout');
@@ -40,7 +42,7 @@ const VERSION = require('../package.json').version;
 
 /**
  * opts: config, store, now (clock), fetchImpl (Network), log, limitsNow, callerLimits (false: count nobody,
- * tests only), valkey
+ * tests only), valkey, accountSend (a stand-in for Network's internal routes; tests only)
  */
 async function createApp(opts = {}) {
     const config = opts.config || configLib.load();
@@ -52,8 +54,17 @@ async function createApp(opts = {}) {
     const sso = createSso({ config, keys, fetchImpl, now: s.now, log });
     const principal = createPrincipal({ config, keys });
     const coins = createCoins({ config, s, fetchImpl, log });
-    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, now: s.now, log });
-    const ctx = { config, s, keys, sso, principal, coins, eventsConsumer, log };
+    // Account export and deletion (ADR-033, ./identity/account-data.js): the three tables that hold a person's rows.
+    // The sender posts to Network's internal export/deletion routes with this service's own client-credentials token;
+    // a test injects a stand-in through opts.accountSend. Without a client secret the service has no way to push a
+    // part or a confirmation: the route still answers (bad signature, a forwarded request, no secret), and an event
+    // that really arrives asks Events to retry.
+    const accountData = accountDataLib.create({ db: s.db, log });
+    const accountSend = opts.accountSend || (config.oauth.clientSecret
+        ? createNetworkSender({ networkInternalUrl: config.networkInternalUrl, clientId: config.oauth.clientId, clientSecret: config.oauth.clientSecret, fetch: fetchImpl })
+        : async () => { throw new Error('OV_OAUTH_CLIENT_SECRET is not set: Quest cannot answer account events'); });
+    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, accountData, accountSend, now: s.now, log });
+    const ctx = { config, s, keys, sso, principal, coins, eventsConsumer, accountData, accountSend, log };
 
     const app = express();
     app.disable('x-powered-by');
@@ -106,7 +117,8 @@ async function createApp(opts = {}) {
     app.use('/auth', sso.routes());
     { const legal = require('openvibe-shared/legal'); app.get(legal.PATHS, legal.handler({ id: 'quest', service: 'quest', host: 'openvibe.quest', name: 'OpenVibe.Quest', profile: 'ugc' })); }
 
-    // ── OpenVibe.Events → the quest log (loopback only; the raw body is the signature's) ──
+    // ── OpenVibe.Events → the quest log and account export/deletion (loopback only; the raw body is the
+    // signature's). The two network.account.* topics (ADR-033) are answered inside the consumer. ──
     app.use('/internal/events', eventsConsumer.router);
 
     // ── Static assets (content-hashed ?v= → immutable) ──────

@@ -121,6 +121,31 @@ idempotent by key), so the OpenCoins tests need no real wallet.
 - Register the service and its capabilities in **OpenVibe.Contracts** (`contracts-service: quest` in CI) and with
   **OpenVibe.Services** before the first deploy.
 
+## Account export and deletion
+
+A person's account at OpenVibe.Network can be exported and deleted, and every service holding their rows answers its
+part (ADR-033). Quest receives `network.account.export_requested` and `network.account.deleted` at `POST /internal/events`
+(loopback only) through the consumer it already runs — the two account topics are handed to
+[server/identity/account-data.js](server/identity/account-data.js), which maps the tables, and the boot-time
+subscriptions for them are created (alongside the catalog's events) by
+[server/events-consumer.js](server/events-consumer.js):
+
+- **Exported:** the quests a person is partway through (`progress.json`), the quests they completed and their OpenCoins
+  (`completions.json`) and the badges they earned (`badges.json`), pushed to `POST /internal/account-exports/:id/parts`
+  with this service's own token. Nothing here is a secret — Quest stores no token, key or credential.
+- **Erased:** all three tables hold the person's own rows and nothing anyone else's page hangs under them, so they are
+  deleted whole and nothing is kept. Deleting a completion deletes its OpenCoins record here; the wallet credit at
+  OpenVibe.Network is Network's own data. Quest then confirms with `POST /internal/account-deletions/:id/confirmations`
+  and the counts.
+- **Anonymized:** nothing. There is no row Quest keeps that was written by this person for another person to read.
+
+The delivery receipts (`quest_event_inbox`) are this service's own, not a person's rows, and are neither exported nor
+erased.
+
+Environment: `QUEST_EVENTS_SECRET` (comma-separated for rotation, 32+ characters each; unset makes the route answer
+503), `QUEST_EVENTS_URL` (or `EVENTS_URL`) is where the subscriptions are created at boot (off when unset), and
+`QUEST_EVENTS_ENDPOINT` overrides the loopback endpoint; `QUEST_EVENTS_SUBSCRIBE=0` turns the boot-time subscription off.
+
 ## Security (threat notes)
 
 Reporting a vulnerability: [SECURITY.md](SECURITY.md).

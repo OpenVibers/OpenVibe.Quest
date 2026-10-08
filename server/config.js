@@ -52,6 +52,26 @@ function load(env = process.env) {
             sessionAudience: env.OV_SESSION_AUDIENCE || 'openvibe.network',
         },
         cookies: { secure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : isProduction },
+
+        // OpenVibe.Events → this service (server/events-consumer.js). The secret is what signs a delivery
+        // (comma-separated for rotation, 32+ characters each); unset turns the consumer off (503) and Quest
+        // then simply never moves. The url is where subscriptions are created at boot, off when unset.
+        events: {
+            secrets: String(env.QUEST_EVENTS_SECRET || '').split(',').map((x) => x.trim()).filter(Boolean),
+            url: trim(env.QUEST_EVENTS_URL || env.EVENTS_URL || ''),
+            endpoint: env.QUEST_EVENTS_ENDPOINT || '',
+        },
+
+        // OpenCoins (server/quests/coins.js). Rewards are badges and OpenCoins — loyalty points, never money, and
+        // never Vibes. QUEST_COINS is off by default: with 'off' nothing is credited, a completion's coins are
+        // 'skipped' and the pages say the rewards start soon. 'on' credits through OpenVibe.Network's wallet
+        // within the two daily caps. retryMs is how often a failed or unfinished credit is retried.
+        coins: {
+            mode: String(env.QUEST_COINS || 'off').toLowerCase() === 'on' ? 'on' : 'off',
+            dailyCap: Math.max(0, int(env.QUEST_COINS_DAILY_CAP, 50)),
+            globalDailyCap: Math.max(0, int(env.QUEST_COINS_GLOBAL_DAILY_CAP, 5000)),
+            retryMs: Math.max(10_000, int(env.QUEST_COINS_RETRY_MS, 300_000)),
+        },
     };
 }
 

@@ -24,6 +24,9 @@ const TAGLINE = 'Quests across the whole network.';
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 // The product's own navigation: one entry per public page it serves.
 const NAV = [
+    { label: 'Quests', href: '/' },
+    { label: 'Your quest log', href: '/me' },
+    { label: 'How it works', href: '/how-it-works' },
     { label: 'What shipped', href: '/updates' },
 ];
 

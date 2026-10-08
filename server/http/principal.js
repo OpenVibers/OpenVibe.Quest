@@ -20,9 +20,10 @@ const { serviceAuth, capabilities, http, ids } = require('openvibe-contracts');
 
 const PRINCIPAL_SUB = /^(svc|app|mod|agent):/;
 const PROJECT_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
-// The product fills this in: one entry per capability its routes name, in openvibe-contracts
-// manifests/capabilities/<quest>.*. requireCapability('<name>') refuses a name that is not listed here, so a
-// route can never be guarded by a capability the service does not declare.
+// Empty on purpose: every route OpenVibe.Quest serves is either public (the catalog, a quest, a person's public
+// badges) or a person reading their own log, and neither needs a capability — a person acting for themself never
+// does. openvibe-contracts has no quest.* capability manifest yet; a route that needed one would add it there
+// first and then name it here, so a route can never be guarded by a capability the service does not declare.
 const CAPABILITIES = [];
 
 function decodePayload(token) {

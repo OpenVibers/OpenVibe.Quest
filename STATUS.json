@@ -1,8 +1,8 @@
 {
-  "stage": "skeleton",
+  "stage": "alpha",
   "code": true,
   "wave": "W20",
-  "plan": "OpenVibe.Quest starts from the OpenVibe service skeleton; the product's own plan is written here when it is",
+  "plan": "OpenVibe.Quest — the network's shared quest and rewards system: one quest log across every OpenVibe site, rewards as badges and OpenCoins (loyalty, never money), community-made quests later",
   "runtime": "node 22, express 4, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": "4980",
   "domain": "openvibe.quest",
@@ -14,33 +14,38 @@
     "openvibe-sdk v0.35.2",
     "openvibe-shared v2.14.0"
   ],
-  "summary": "OpenVibe.Quest — Quests across the whole network. A new OpenVibe service on the shared skeleton, not deployed yet: sign-in with OpenVibe.Network (OAuth 2 + PKCE, httpOnly session cookies), server-rendered pages through the OpenVibe Frame, the /api/v1 mount with per-caller limits, crawl artifacts, PostgreSQL migrations applied at boot, the nginx and systemd deploy files and a test suite on PGlite with a mock Network.",
+  "summary": "OpenVibe.Quest: one quest log across every OpenVibe site. OpenVibe.Events delivers the domain events the sites already emit to POST /internal/events (signed v2, once-only through the openvibe-sdk inbox), the person taken from the field each event's own schema defines, and a progress count, a completion and a badge move because of it. 12 first-party quests in code, grouped by the site whose events each counts. Rewards are badges and OpenCoins — credited through OpenVibe.Network's wallet, off by default (QUEST_COINS), with per-person and network-wide daily caps, failures recorded and retried. Public API and server-rendered pages, complete without JavaScript. Not deployed; OpenCoins are off until Network grants the two capabilities.",
   "works": [
-    "Sign-in with OpenVibe.Network (PKCE S256, server-side code exchange, httpOnly session cookies)",
-    "Server-rendered pages: the home page and /updates, through the OpenVibe Frame, complete without JavaScript",
-    "Crawl artifacts: robots.txt, sitemap.xml, llms.txt, llms-full.txt and the home page's JSON-LD",
-    "The API mount at /api/v1 with the problem+json error shape, the per-address limits and the per-caller limits",
-    "Capability verification for app, agent and service tokens (audience openvibe.quest) and for a person's own token",
-    "Truthful readiness (/api/ready: the database is required) and Prometheus metrics on loopback",
-    "PostgreSQL with migrations/NNNN_*.sql (openvibe-sdk/db); PGlite in development",
-    "Deploy files: deploy/nginx/openvibe.quest.conf and deploy/systemd/openvibe-quest.service",
-    "Tests on a temp PGlite database with an in-process mock of OpenVibe.Network"
+    "The quest catalog in code (12 quests, 8 sites) and the whole list of events it listens to, with a load-time check that no quest counts an undocumented event",
+    "POST /internal/events exactly as OpenVibe.Space does it: raw body, parseDelivery requireV2, the openvibe-sdk inbox, forwarding headers refused, 503 without QUEST_EVENTS_SECRET",
+    "Subscriptions created at boot for the catalog's events (idempotent, off without QUEST_EVENTS_URL / QUEST_EVENTS_SECRET)",
+    "The person taken from the event's own schema field (channel.subject, follower, author, user_subject, player.subject, owner); an event with no usr_ subject, a guest or a service is ignored",
+    "Progress per step, one completion per person per quest and one badge per person, all once-only under a redelivery",
+    "OpenCoins through OpenVibe.Network's wallet (network.coins.credit, app_id quest), idempotency_key = the completion id, subject resolved to the wallet's user id through identity.resolve",
+    "QUEST_COINS off by default (coins_state=skipped, the pages say the rewards start soon); per-person (50) and network-wide (5000) daily caps; a failure recorded with its reason and retried by a timer",
+    "GET /api/v1/quests, /quests/:id, /me/quests (a signed-in person's own log), /profiles/:subject/badges (id, name and date only)",
+    "Pages: home (the quests grouped by site, how progress works), a quest, your quest log (plain <progress> bars), the rules, the update log; robots, sitemap with every quest page, llms.txt, llms-full.txt",
+    "Tests on temp PGlite databases with a mock Network that also serves the wallet: signature refusal, idempotent replay, counting to completion, badge once, coins off, coins on with caps and a retry, events with no subject ignored, /me requires sign-in, hostile titles escaped"
   ],
   "notYet": [
-    "The product itself: its tables and migrations, its capabilities, its routes in server/http/api.js and its pages in server/http/pages.js",
-    "Its service and capability manifests in openvibe-contracts (contracts-service is quest)",
-    "A deployment: the service is not registered with OpenVibe.Services nor deployed by OpenVibe.Host"
+    "A deployment: the service is not registered with OpenVibe.Services nor deployed by OpenVibe.Host, and its capabilities are not in openvibe-contracts yet (no quest.* manifest exists)",
+    "OpenCoins are off in production until OpenVibe.Network grants the quest client identity.subject.resolve and network.coins.credit",
+    "Community-made quests (streamers, communities, mods): they need moderation, which this release does not have",
+    "Repeatable quests and seasonal resets: every quest completes once per person",
+    "Account deletion and merges (ADR-033, ADR-029): quest_progress, quest_completions and quest_badges rows are not removed or re-keyed when a Network account is deleted or merged",
+    "Quest chains, leaderboards and per-community quests; a streamer's getting-started steps still live on OpenVibe.Live"
   ],
   "capabilitiesRegistered": false,
   "serviceManifestRegistered": false,
   "deployed": false,
   "placeholderInSites": false,
   "features": [
-    "Network sign-in",
+    "quest catalog",
+    "OpenVibe.Events consumer",
+    "OpenCoins through Network's wallet",
+    "public API",
     "server-rendered pages",
-    "api mount",
-    "limits and readiness",
-    "deploy files"
+    "crawl artifacts"
   ],
   "updated": "2026-10-08"
 }

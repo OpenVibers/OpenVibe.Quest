@@ -14,6 +14,10 @@
  *             answers what setUsage() stored for the project, or an empty network.project-usage-result@1.
  *             POST /api/v1/projects/:project/export-tokens as Network mints them (owner/admin only,
  *             sub app:app_<project ULID>, read-only caps, purpose export), recorded in exportTokens.
+ *             GET  /internal/identity/resolve?subject_id=usr_… (the projection with network_user_id) and
+ *             POST /internal/coins/credit (the OpenCoins wallet), both as OpenVibe.Quest's OpenCoins client
+ *             needs them: the caller must be svc:quest with the capability in its token, the credit is
+ *             idempotent by idempotency_key, and setCoinsDown(true) makes the wallet refuse.
  * Every request is recorded in `.requests` so tests can assert what was (not) called.
  */
 const http = require('http');
@@ -56,6 +60,7 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
         users: new Map(), byUsername: new Map(), projects: new Map(), members: new Map(), apps: new Map(), creds: new Map(),
         grants: new Map(), quotas: new Map(), usage: new Map(), audit: [], codes: new Map(), refresh: new Map(),
         catalog: null, down: false, requests: [], tokenRequests: [], exportTokens: [], exportTtl: 300,
+        coins: { balances: new Map(), byKey: new Map(), credits: [], down: false },
     };
     let issuer = null;
     let nextUserId = 1;
@@ -82,6 +87,20 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
         if (c.exp * 1000 < Date.now()) return 'expired';
         return st.users.get(c.sub) || null;
     }
+
+    /** The verified claims of a service token this mock issued, or null (bad signature, expired, not a service). */
+    function serviceFrom(req) {
+        const h = String(req.headers.authorization || '');
+        if (!h.startsWith('Bearer ')) return null;
+        const parts = h.slice(7).split('.');
+        if (parts.length !== 3) return null;
+        const ok = crypto.verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), publicPem, Buffer.from(parts[2], 'base64url'));
+        if (!ok) return null;
+        const c = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+        if (c.exp * 1000 < Date.now() || !String(c.sub || '').startsWith('svc:')) return null;
+        return c;
+    }
+    const hasCap = (claims, cap) => Array.isArray(claims.cap) && claims.cap.includes(cap);
 
     // ── Projects model ──
     const roleOf = (p, u) => (st.members.get(p.id) || new Map()).get(u.subject) || null;
@@ -298,6 +317,35 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
             if (!wanted.length) return json(400, { error: 'invalid_scope', error_description: `no grants for audience ${body.audience}` });
             return json(200, { access_token: mintApp(a, body.audience, wanted), token_type: 'Bearer', expires_in: 300, scope: wanted.join(' ') });
         }
+        // ── The OpenCoins wallet and subject resolution (OpenVibe.Quest's client) ──
+        // Both are internal: a service token with the right capability, never a person's token.
+        if (url.pathname === '/internal/identity/resolve' && req.method === 'GET') {
+            const claims = serviceFrom(req);
+            if (!claims || !hasCap(claims, 'identity.subject.resolve')) return problem(json, 403, 'capability.denied', 'identity.subject.resolve is required');
+            const u = [...st.users.values()].find((x) => x.subject === url.searchParams.get('subject_id'));
+            if (!u) return problem(json, 404, 'identity.subject_not_found', 'no subject for that id');
+            return json(200, { subject: { type: 'user', id: u.subject }, network_user_id: u.id, username: u.username, display_name: u.display_name, banned: false });
+        }
+        if (url.pathname === '/internal/coins/credit' && req.method === 'POST') {
+            const claims = serviceFrom(req);
+            if (!claims || !hasCap(claims, 'network.coins.credit')) return problem(json, 403, 'capability.denied', 'network.coins.credit is required');
+            let body = {};
+            try { body = raw.length ? JSON.parse(raw.toString('utf8')) : {}; } catch { return json(400, { error: 'request.malformed_json' }); }
+            st.coins.credits.push(body);
+            if (st.coins.down) return json(503, { error: 'wallet_unavailable' });
+            // Network's ownApp rule: svc:quest may only name its own app id.
+            if (String(body.app_id) !== claims.sub.slice(4)) return problem(json, 403, 'capability.owner_denied', `svc:${claims.sub.slice(4)} may only credit app ${claims.sub.slice(4)}`);
+            if (!Number.isInteger(body.amount) || body.amount < 1) return json(400, { error: 'invalid_amount' });
+            if (typeof body.idempotency_key !== 'string' || !body.idempotency_key) return json(400, { error: 'missing_idempotency_key' });
+            const userId = Number(body.user_id);
+            if (!st.users.has(userId)) return json(404, { error: 'user_not_found' });
+            const seen = st.coins.byKey.get(body.idempotency_key);
+            if (seen !== undefined) return json(200, { balance: seen });   // a replay changes nothing
+            const balance = (st.coins.balances.get(userId) || 0) + body.amount;
+            st.coins.balances.set(userId, balance);
+            st.coins.byKey.set(body.idempotency_key, balance);
+            return json(200, { balance });
+        }
         if (url.pathname.startsWith('/api/v1/projects')) {
             const u = userFrom(req);
             if (u === 'expired') return problem(json, 401, 'auth.expired', 'access token expired; refresh it');
@@ -321,6 +369,10 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
         setQuota(projectId, capability, limit, window, unit) { st.quotas.set(`${projectId} ${capability}`, { project_id: projectId, capability, limit, window, unit, updated_at: new Date().toISOString() }); },
         setCatalog(list) { st.catalog = list; },
         setDown(v) { st.down = v; },
+        /** The OpenCoins wallet: what it credited, and how to make it refuse (a 503, as an outage does). */
+        get coinCredits() { return st.coins.credits; },
+        coinBalance(user) { return st.coins.balances.get(user.id) || 0; },
+        setCoinsDown(v) { st.coins.down = Boolean(v); },
         mintApp: (appId, audience, cap, extra = {}) => { const a = st.apps.get(appId); const now = Math.floor(Date.now() / 1000); return serviceAuth.signServiceToken({ iss: issuer, sub: `app:${a.id}`, actor_type: 'app', aud: [audience], cap, ns: [a.project_id], project_id: a.project_id, env: a.environment, iat: now, exp: now + 300, jti: `tok_${crypto.randomBytes(8).toString('hex')}`, ...extra }, privatePem); },
         close: srv.close,
     };

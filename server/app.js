@@ -28,6 +28,8 @@ const { createSso } = require('./auth/sso');
 const { createPrincipal } = require('./http/principal');
 const { createApi } = require('./http/api');
 const { createPageRoutes } = require('./http/pages');
+const { createCoins } = require('./quests/coins');
+const { createEventsConsumer } = require('./events-consumer');
 const { createServiceReadiness } = require('./observability');
 const { createCallerLimits } = require('./http/caller-limits');
 const { assetVersion, send } = require('./render/layout');
@@ -49,7 +51,9 @@ async function createApp(opts = {}) {
     const keys = createKeyStore({ config, fetchImpl, log });
     const sso = createSso({ config, keys, fetchImpl, now: s.now, log });
     const principal = createPrincipal({ config, keys });
-    const ctx = { config, s, keys, sso, principal, log };
+    const coins = createCoins({ config, s, fetchImpl, log });
+    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, now: s.now, log });
+    const ctx = { config, s, keys, sso, principal, coins, eventsConsumer, log };
 
     const app = express();
     app.disable('x-powered-by');
@@ -89,7 +93,7 @@ async function createApp(opts = {}) {
     app.use(cookieParser());
 
     // ── Machine endpoints ───────────────────────────────────
-    app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'openvibe-quest', version: VERSION }));
+    app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'openvibe-quest', version: VERSION, events: eventsConsumer.stats() }));
     release.mount(app, { registry: metrics.registry });
     const readiness = createServiceReadiness({ s, config, release: release.release, valkey });
     app.get('/api/ready', readiness.handler);
@@ -101,6 +105,9 @@ async function createApp(opts = {}) {
     app.use('/auth/', rateLimit({ windowMs: 15 * 60_000, limit: 60, standardHeaders: true, legacyHeaders: false }));
     app.use('/auth', sso.routes());
     { const legal = require('openvibe-shared/legal'); app.get(legal.PATHS, legal.handler({ id: 'quest', service: 'quest', host: 'openvibe.quest', name: 'OpenVibe.Quest', profile: 'ugc' })); }
+
+    // ── OpenVibe.Events → the quest log (loopback only; the raw body is the signature's) ──
+    app.use('/internal/events', eventsConsumer.router);
 
     // ── Static assets (content-hashed ?v= → immutable) ──────
     app.use('/shared', require('openvibe-shared/serve').handler());

@@ -8,13 +8,15 @@ const { createApp } = require('./app');
 const { gracefulStop } = require('openvibe-sdk/service');
 
 /**
- * The process stop (openvibe-sdk/service): the HTTP drain runs, then the JWKS refresher stops and the store closes.
- * Exported so a test can inject `exit` and `signals: false`.
+ * The process stop (openvibe-sdk/service): the HTTP drain runs, then the timers clear, the Events subscriptions
+ * stop, the JWKS refresher stops and the store closes. Exported so a test can inject `exit` and `signals: false`.
+ * `extra` is what the product adds (the Events subscriptions and the OpenCoins retry timer); a test that passes
+ * none keeps the skeleton's order.
  */
-function createLifecycle({ server, ctx, exit, signals, timers = [] }) {
+function createLifecycle({ server, ctx, exit, signals, timers = [], extra = [] }) {
     return gracefulStop({
         name: 'OpenVibe.Quest', server, deadlineExitCode: 0, exit, signals, deadlineMs: 10_000,
-        close: [() => { for (const t of timers) clearInterval(t); }, () => ctx.keys.client.stop(), () => ctx.s.close()],
+        close: [() => { for (const t of timers) clearInterval(t); }, () => ctx.keys.client.stop(), () => ctx.s.close(), ...extra],
     });
 }
 
@@ -28,7 +30,16 @@ async function start() {
     server.keepAliveTimeout = 65_000;
     ctx.keys.client.start();
 
-    createLifecycle({ server, ctx });
+    // Subscribe to the events the catalog counts at OpenVibe.Events (idempotent; off without QUEST_EVENTS_URL
+    // and QUEST_EVENTS_SECRET) and come back to OpenCoins a failed credit owes (off unless QUEST_COINS=on).
+    const secret = config.events.secrets[0] || '';
+    const subscriptions = require('./events-consumer').startSubscriptions({ config, port: config.port, secret });
+    const timers = [];
+    const coinsTimer = ctx.coins.start();
+    if (coinsTimer) timers.push(coinsTimer);
+
+    const extra = [() => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop()];
+    createLifecycle({ server, ctx, timers, extra });
     return { server, ctx };
 }
 

@@ -14,8 +14,10 @@ const { measure, check, format } = require('openvibe-shared/perf-budget');
 // Budgets are set from the numbers measured on 2026-10-08 (the real ones, fresh database), rounded up with about 10%
 // headroom; file counts are the measured counts and external files stay at 0.
 const BUDGETS = {
-    htmlRawKB: 27.5,   // measured 24.9 (the home page: hero, features, steps, cta, JSON-LD)
-    htmlBrotliKB: 6.9,   // 6.2
+    // Raised 2026-10-08 with the product: the home page now carries the quest catalog (12 quests, grouped by
+    // site, each with its reward) and the list of the events Quest counts. Measured 34.0 KB raw / 7.7 KB brotli.
+    htmlRawKB: 37.5,   // measured 34.0 (the home page: hero, features, the quests, the events, cta, JSON-LD)
+    htmlBrotliKB: 8.5,   // 7.7
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 264,   // 239.8
     jsBrotliKB: 62.5,   // 56.5

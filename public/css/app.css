@@ -42,3 +42,24 @@ form.inline { display: inline; }
 .page .sc-ic .ov-icon { --ovi-size: 28px !important; }
 button.sc-btn { background: transparent; }
 button.sc-btn.sc-primary { border: 0; }
+
+/* ── OpenVibe.Quest: the quest pages (server/http/pages.js, server/render/quests.js) ──
+   Structure only — the design pass comes later. Every class below is one the pages render. */
+p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 780px; }
+.site-group { margin: 1.2rem 0; }
+.site-group small { color: var(--text-muted, #7386a3); font-weight: 400; }
+.quest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.quest { border: 1px solid var(--border, #1f2d47); border-radius: 10px; padding: .7rem .9rem; background: var(--bg-card, #131c2e); }
+.quest-title { font-weight: 650; }
+.quest-why { margin: .25rem 0; color: var(--text-secondary, #96a7c2); font-size: .93rem; }
+.quest-steps, .quest-reward { margin: .3rem 0; font-size: .87rem; }
+.quest-steps .step { display: inline-block; margin-right: .6rem; }
+.steps { margin: .4rem 0; }
+.done { color: var(--success, #22c55e); font-weight: 700; }
+.progress { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr auto; gap: .5rem; align-items: center; margin: .3rem 0; font-size: .9rem; }
+.progress progress { width: 100%; }
+.progress-count { color: var(--text-muted, #7386a3); font-variant-numeric: tabular-nums; }
+.badges { list-style: none; display: flex; flex-wrap: wrap; gap: .6rem; padding: 0; }
+.badges li { border: 1px solid var(--border-light, #2c3d5c); border-radius: 999px; padding: .2rem .8rem; }
+.badges small { color: var(--text-muted, #7386a3); }
+.quest-block { margin: .8rem 0; }

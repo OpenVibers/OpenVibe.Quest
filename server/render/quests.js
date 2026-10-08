@@ -14,18 +14,36 @@ const { html } = require('./html');
  */
 function reward(quest, { coinsEnabled = false } = {}) {
     const badge = quest.reward.badge.name;
-    if (quest.reward.coins <= 0) return html`<span class="reward">Badge: <strong>${badge}</strong></span>`;
-    if (!coinsEnabled) return html`<span class="reward">Badge: <strong>${badge}</strong> · <span class="muted">OpenCoins rewards start soon</span></span>`;
-    return html`<span class="reward">Badge: <strong>${badge}</strong> · <strong>${quest.reward.coins}</strong> OpenCoins</span>`;
+    const badgeChip = html`<span class="reward-badge">Badge: <strong>${badge}</strong></span>`;
+    if (quest.reward.coins <= 0) return html`<span class="reward">${badgeChip}</span>`;
+    if (!coinsEnabled) return html`<span class="reward">${badgeChip}<span class="reward-coins soon">OpenCoins rewards start soon</span></span>`;
+    return html`<span class="reward">${badgeChip}<span class="reward-coins"><strong>${quest.reward.coins}</strong> OpenCoins</span></span>`;
 }
 
-/** One quest in a list: what it is, why, what it pays, and the events it counts. */
+/** A badge's colour, fixed by its quest id, so a badge looks the same wherever it is shown. */
+function hueOf(id) {
+    let h = 0;
+    for (const ch of String(id)) h = (h * 33 + ch.codePointAt(0)) % 360;
+    return h;
+}
+
+/** The badge as a medal: its initials on a ring of its colour (decorative; the name is always written beside it). */
+function medal(quest, { earned = false } = {}) {
+    const words = String(quest.reward.badge.name || quest.title).split(/\s+/).filter(Boolean);
+    const initials = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
+    return html`<span class="medal${earned ? ' earned' : ''}" style="--h:${hueOf(quest.id)}" aria-hidden="true">${initials}</span>`;
+}
+
+/** One quest in a list: the badge it pays, what it is, why, the steps as a checklist, and the reward. */
 function card(quest, { coinsEnabled = false } = {}) {
     return html`<li class="quest">
+    ${medal(quest)}
+    <div class="quest-main">
     <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a>
     <p class="quest-why">${quest.why}</p>
-    <p class="quest-steps">${quest.steps.map((s) => html`<span class="step">${s.label}${s.count > 1 ? html` ×${s.count}` : ''} <code>${s.event_type}</code></span>`)}</p>
+    <ul class="quest-steps">${quest.steps.map((s) => html`<li>${s.label}${s.count > 1 ? html` <span class="step-count">×${s.count}</span>` : ''}</li>`)}</ul>
     <p class="quest-reward">${reward(quest, { coinsEnabled })}</p>
+    </div>
 </li>`;
 }
 
@@ -34,7 +52,7 @@ function list(groups = catalog.grouped(), { coinsEnabled = false } = {}) {
     // The heading id is the domain with its dots replaced: an id with a dot is legal but awkward to target.
     const anchor = (site) => `site-${String(site).replace(/[^a-z0-9-]/gi, '-')}`;
     return html`${groups.map((g) => html`<section class="site-group" aria-labelledby="${anchor(g.site)}">
-    <h3 id="${anchor(g.site)}"><a href="https://${g.site}">${g.name}</a>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
+    <h3 id="${anchor(g.site)}"><a href="https://${g.site}">${String(g.name).replace(/^OpenVibe\./, '')}</a><span class="site-count">${g.quests.length} quest${g.quests.length === 1 ? '' : 's'}</span>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
     <ul class="quest-list">${g.quests.map((q) => card(q, { coinsEnabled }))}</ul>
 </section>`)}`;
 }
@@ -58,4 +76,4 @@ ${dailyCap} OpenCoins per person per day and ${globalDailyCap} for everyone toge
 never money — and never Vibes.</p>`;
 }
 
-module.exports = { reward, card, list, progress, coinsNote };
+module.exports = { medal, hueOf, reward, card, list, progress, coinsNote };

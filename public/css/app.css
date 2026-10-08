@@ -48,12 +48,32 @@ button.sc-btn.sc-primary { border: 0; }
 p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 780px; }
 .site-group { margin: 1.2rem 0; }
 .site-group small { color: var(--text-muted, #7386a3); font-weight: 400; }
-.quest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-.quest { border: 1px solid var(--border, #1f2d47); border-radius: 10px; padding: .7rem .9rem; background: var(--bg-card, #131c2e); }
-.quest-title { font-weight: 650; }
-.quest-why { margin: .25rem 0; color: var(--text-secondary, #96a7c2); font-size: .93rem; }
-.quest-steps, .quest-reward { margin: .3rem 0; font-size: .87rem; }
-.quest-steps .step { display: inline-block; margin-right: .6rem; }
+.site-group { margin: 22px 0 0; }
+.site-group h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; font-size: 1.1rem; }
+.site-group h3 a { color: var(--text-primary, #e6edf7); text-decoration: none; }
+.site-group h3 a:hover { color: var(--accent-light, #60a5fa); }
+.site-group h3 small { flex-basis: 100%; font-weight: 400; font-size: .86rem; color: var(--text-muted, #7386a3); }
+.site-count { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-muted, #7386a3); }
+.quest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.quest { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; padding: 16px; border-radius: 16px; border: 1px solid var(--border, #1f2d47); background: var(--bg-card, #131c2e); transition: border-color .15s, transform .15s; }
+.quest:hover { border-color: color-mix(in srgb, var(--accent, #3b82f6) 55%, var(--border, #1f2d47)); transform: translateY(-1px); }
+.medal { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1rem; letter-spacing: .02em; color: hsl(var(--h) 85% 82%); background: radial-gradient(circle at 35% 30%, hsl(var(--h) 55% 34%), hsl(var(--h) 50% 18%) 70%); box-shadow: inset 0 0 0 3px hsl(var(--h) 55% 42% / .55), 0 6px 16px -8px hsl(var(--h) 70% 40% / .8); }
+.medal.earned { box-shadow: inset 0 0 0 3px hsl(var(--h) 80% 62%), 0 0 0 3px hsl(var(--h) 80% 62% / .25), 0 8px 20px -8px hsl(var(--h) 80% 50%); }
+.quest-main { min-width: 0; }
+.quest-title { font-weight: 700; font-size: 1.02rem; color: var(--text-primary, #e6edf7); text-decoration: none; }
+.quest-title:hover { color: var(--accent-light, #60a5fa); text-decoration: underline; text-underline-offset: 3px; }
+.quest-why { margin: 4px 0 8px; color: var(--text-secondary, #96a7c2); font-size: .92rem; line-height: 1.45; }
+.quest-steps { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
+.quest-steps li { position: relative; padding-left: 22px; color: var(--text-primary, #e6edf7); }
+.quest-steps li::before { content: ''; position: absolute; left: 0; top: .28em; width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid var(--border-light, #2c3d5c); }
+.step-count { font-size: .78rem; font-weight: 700; color: var(--text-muted, #7386a3); }
+.quest-reward { margin: 0; }
+.reward { display: flex; flex-wrap: wrap; gap: 6px; }
+.reward-badge, .reward-coins { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-secondary, #96a7c2); }
+.reward-badge strong { color: var(--text-primary, #e6edf7); }
+.reward-coins { color: var(--warning, #f59e0b); border-color: color-mix(in srgb, var(--warning, #f59e0b) 40%, transparent); }
+.reward-coins.soon { color: var(--text-muted, #7386a3); border-style: dashed; border-color: var(--border-light, #2c3d5c); }
+@media (prefers-reduced-motion: reduce) { .quest { transition: none; } }
 .steps { margin: .4rem 0; }
 .done { color: var(--success, #22c55e); font-weight: 700; }
 .progress { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr auto; gap: .5rem; align-items: center; margin: .3rem 0; font-size: .9rem; }

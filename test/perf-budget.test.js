@@ -22,8 +22,8 @@ const BUDGETS = {
     jsRawKB: 264,   // 239.8
     jsBrotliKB: 62.5,   // 56.5
     cssFiles: 2,   // 2 (app.css + the cached /shared/showcase.css)
-    cssRawKB: 16.5,   // 15.0
-    cssBrotliKB: 4.1,   // 3.7
+    cssRawKB: 21.0,   // 19.1 with the quest medals and cards
+    cssBrotliKB: 5.1,   // 4.6
     externalFiles: 0,   // 0
 };
 

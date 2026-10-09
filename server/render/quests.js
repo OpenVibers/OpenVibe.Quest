@@ -9,15 +9,18 @@ const catalog = require('../quests/catalog');
 const { html } = require('./html');
 
 /**
- * What a quest pays: its badge (a text label) and its OpenCoins. When OpenCoins are off the reward says so
+ * What a quest pays: its badge (a text label), for some an item (OpenVibe.Inventory) and its OpenCoins. When OpenCoins are off the reward says so
  * instead of promising points that do not move — the sentence the product uses everywhere.
  */
 function reward(quest, { coinsEnabled = false } = {}) {
     const badge = quest.reward.badge.name;
     const badgeChip = html`<span class="reward-badge">Badge: <strong>${badge}</strong></span>`;
-    if (quest.reward.coins <= 0) return html`<span class="reward">${badgeChip}</span>`;
-    if (!coinsEnabled) return html`<span class="reward">${badgeChip}<span class="reward-coins soon">OpenCoins rewards start soon</span></span>`;
-    return html`<span class="reward">${badgeChip}<span class="reward-coins"><strong>${quest.reward.coins}</strong> OpenCoins</span></span>`;
+    // An item for the person's OpenVibe.Inventory (server/quests/items.js), worn in chat and on their profile.
+    const it = quest.reward.item;
+    const itemChip = it ? html`<span class="reward-item" title="${it.kind} for your OpenVibe inventory"><span aria-hidden="true">${it.emoji}</span> <strong>${it.name}</strong> <small>${it.kind.toLowerCase()}</small></span>` : '';
+    if (quest.reward.coins <= 0) return html`<span class="reward">${badgeChip}${itemChip}</span>`;
+    if (!coinsEnabled) return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins soon">OpenCoins rewards start soon</span></span>`;
+    return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins"><strong>${quest.reward.coins}</strong> OpenCoins</span></span>`;
 }
 
 /** A badge's colour, fixed by its quest id, so a badge looks the same wherever it is shown. */

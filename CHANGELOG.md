@@ -2,6 +2,17 @@
 
 What changed in OpenVibe.Quest, newest first. Each site also publishes its patch notes at /updates.
 
+## 0.3.0 — 2026-10-09
+
+- **Item rewards** (plan T21): six quests also give one of Live's items for the person's OpenVibe.Inventory: say hello
+  in chat (Sparkle), follow someone (Hearts), go live (Basic Cap), stream three times (Fire Name), start a thread (Ice
+  Name), improve a wiki page (Rainbow Name).
+  - **How:** `server/quests/items.js` grants each in Inventory after the completion commits, with Quest's own token,
+    origin `earned` and the completion id as the idempotency key.
+  - **Failures:** a failed grant is recorded (`migrations/0004_item_rewards.sql`) and retried by a timer, which also
+    reaches completions from before this release.
+  - **Pages:** the quest pages, `/me` and `/api/v1/quests` name the item.
+
 ## 0.2.0 — 2026-10-08
 
 - **The product.** One quest log across the whole network:

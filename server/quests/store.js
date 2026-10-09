@@ -102,6 +102,21 @@ const creditedAll = async (db, day) => Number(await db.value(
       WHERE coins_state = 'credited' AND coins_at IS NOT NULL AND left(coins_at, 10) = $1::text`,
     [day]));
 
+/** Record what happened to a completion's item reward. */
+const setItem = (db, id, { state, instance = null, error = null, at = null, attempts = 0 }) => db.maybe(
+    `UPDATE quest_completions
+        SET item_state = $2, item_instance = COALESCE($3, item_instance), item_error = $4, item_at = $5,
+            item_attempts = item_attempts + $6
+      WHERE id = $1
+      RETURNING *`,
+    [id, state, instance, error, at, attempts]);
+
+/** Completions of the given quests whose item is still owed (never decided, or failed), oldest first. */
+const owedItems = (db, questIds, limit = 50) => (questIds.length ? db.many(
+    `SELECT * FROM quest_completions WHERE quest_id = ANY($1::text[]) AND (item_state IS NULL OR item_state = 'failed')
+      ORDER BY completed_at, id LIMIT $2`,
+    [questIds, limit]) : Promise.resolve([]));
+
 /** How many people have a badge — the count a quest page can show without naming anyone. */
 const badgeHolders = async (db, badgeId) => Number(await db.value('SELECT count(*) FROM quest_badges WHERE badge_id = $1', [badgeId]));
 
@@ -111,4 +126,5 @@ module.exports = {
     completion, completionsFor, completionCount, complete,
     awardBadge, badgesFor, badgesOf, badgeHolders,
     setCoins, owedCoins, creditedTo, creditedAll,
+    setItem, owedItems,
 };

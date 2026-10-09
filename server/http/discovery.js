@@ -23,7 +23,7 @@ const PAGE_TEXT = {
     '/': ['OpenVibe.Quest home', 'OpenVibe.Quest: Quests across the whole network. The quests, grouped by the site whose events each one counts.'],
     '/how-it-works': ['How quests work', 'What OpenVibe.Quest counts, what it stores, and what its rewards are — badges and OpenCoins, never money and never Vibes.'],
     '/updates': ['What shipped on OpenVibe.Quest', 'This site\'s update log, from the network changelog feed.'],
-    ...Object.fromEntries(catalog.all().map((q) => [`/quests/${q.id}`, [q.title, `${q.why} On ${(catalog.SITES[q.site] || {}).name || q.site}. Reward: the ${q.reward.badge.name} badge${q.reward.coins > 0 ? ` and ${q.reward.coins} OpenCoins` : ''}.`]])),
+    ...Object.fromEntries(catalog.all().map((q) => [`/quests/${q.id}`, [q.title, `${q.why} On ${(catalog.SITES[q.site] || {}).name || q.site}. Reward: the ${q.reward.badge.name} badge${q.reward.item ? `, the ${q.reward.item.name} (${q.reward.item.kind.toLowerCase()}) for your inventory` : ''}${q.reward.coins > 0 ? ` and ${q.reward.coins} OpenCoins` : ''}.`]])),
 };
 
 function dayOf(ts) {
@@ -75,7 +75,7 @@ function createDiscoveryRoutes(ctx) {
                     { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
                     { title: 'What shipped on OpenVibe.Quest', url: abs('/updates') },
                 ] },
-                { title: 'The quests', links: catalog.all().map((q) => ({ title: q.title, url: abs(`/quests/${q.id}`), note: `${(catalog.SITES[q.site] || {}).name || q.site} — reward: the ${q.reward.badge.name} badge` })) },
+                { title: 'The quests', links: catalog.all().map((q) => ({ title: q.title, url: abs(`/quests/${q.id}`), note: `${(catalog.SITES[q.site] || {}).name || q.site} — reward: the ${q.reward.badge.name} badge${q.reward.item ? ` and the ${q.reward.item.name}` : ''}` })) },
                 { title: 'Machine-readable', links: [
                     { title: 'Sitemap', url: abs('/sitemap.xml') },
                     { title: 'Full text for language models', url: abs('/llms-full.txt') },

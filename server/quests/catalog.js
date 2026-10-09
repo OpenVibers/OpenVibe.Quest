@@ -16,7 +16,9 @@
  *   title       one line, a thing a person would say
  *   why         one line on why it is worth doing (never a promise the sites do not keep)
  *   steps       [{ event_type, count, label }] — every step must reach its count
- *   reward      { badge: { id, name }, coins } — a text badge label (no emoji) and OpenCoins (loyalty, not money)
+ *   reward      { badge: { id, name }, coins, item? } — a text badge label (no emoji), OpenCoins (loyalty, not money)
+ *               and, for some, an item for the person's OpenVibe.Inventory: { issuer, alias, name, kind, emoji }, one of
+ *               Live's items that Live lets Quest give (ADR-054 §3 grantors; server/quests/items.js grants it)
  *   repeatable  false: a quest completes once per person, and its badge is awarded once
  *
  * Community-made quests (the product's third pillar) are not here yet: they need moderation, which this release
@@ -42,7 +44,7 @@ const QUESTS = Object.freeze([
         title: 'Go live once',
         why: 'A channel with nothing on it is a promise; one broadcast makes it real.',
         steps: [{ event_type: 'live.stream.started', count: 1, label: 'Start a stream' }],
-        reward: { badge: { id: 'first-broadcast', name: 'First Broadcast' }, coins: 10 },
+        reward: { badge: { id: 'first-broadcast', name: 'First Broadcast' }, coins: 10, item: { issuer: 'service:live', alias: 'hat_basic_cap', name: 'Basic Cap', kind: 'Hat', emoji: '🧢' } },
         repeatable: false,
     },
     {
@@ -51,7 +53,7 @@ const QUESTS = Object.freeze([
         title: 'Stream three times',
         why: 'Three broadcasts is a habit; the first one is only an attempt.',
         steps: [{ event_type: 'live.stream.started', count: 3, label: 'Start a stream' }],
-        reward: { badge: { id: 'regular-broadcaster', name: 'Regular Broadcaster' }, coins: 25 },
+        reward: { badge: { id: 'regular-broadcaster', name: 'Regular Broadcaster' }, coins: 25, item: { issuer: 'service:live', alias: 'fx_fire', name: 'Fire Name', kind: 'Name effect', emoji: '🔥' } },
         repeatable: false,
     },
     {
@@ -60,7 +62,7 @@ const QUESTS = Object.freeze([
         title: 'Follow someone',
         why: 'The network is a list of people you chose to hear from.',
         steps: [{ event_type: 'network.follow.created', count: 1, label: 'Follow a channel or a person' }],
-        reward: { badge: { id: 'first-follow', name: 'First Follow' }, coins: 5 },
+        reward: { badge: { id: 'first-follow', name: 'First Follow' }, coins: 5, item: { issuer: 'service:live', alias: 'px_hearts', name: 'Hearts', kind: 'Particle effect', emoji: '💖' } },
         repeatable: false,
     },
     {
@@ -69,7 +71,7 @@ const QUESTS = Object.freeze([
         title: 'Start a forum thread',
         why: 'Every thread on the forum started as somebody\'s question.',
         steps: [{ event_type: 'community.thread.created', count: 1, label: 'Start a thread' }],
-        reward: { badge: { id: 'thread-starter', name: 'Thread Starter' }, coins: 10 },
+        reward: { badge: { id: 'thread-starter', name: 'Thread Starter' }, coins: 10, item: { issuer: 'service:live', alias: 'fx_ice', name: 'Ice Name', kind: 'Name effect', emoji: '❄️' } },
         repeatable: false,
     },
     {
@@ -96,7 +98,7 @@ const QUESTS = Object.freeze([
         title: 'Say hello in chat',
         why: 'A public room is the fastest way to meet the people watching the same stream.',
         steps: [{ event_type: 'chat.room.message.created', count: 1, label: 'Send a message in a public room' }],
-        reward: { badge: { id: 'said-hello', name: 'Said Hello' }, coins: 5 },
+        reward: { badge: { id: 'said-hello', name: 'Said Hello' }, coins: 5, item: { issuer: 'service:live', alias: 'px_sparkle', name: 'Sparkle', kind: 'Particle effect', emoji: '✨' } },
         repeatable: false,
     },
     {
@@ -105,7 +107,7 @@ const QUESTS = Object.freeze([
         title: 'Improve a wiki page',
         why: 'One corrected sentence is a page someone else reads correctly.',
         steps: [{ event_type: 'wiki.revision.created', count: 1, label: 'Save a revision' }],
-        reward: { badge: { id: 'wiki-editor', name: 'Wiki Editor' }, coins: 15 },
+        reward: { badge: { id: 'wiki-editor', name: 'Wiki Editor' }, coins: 15, item: { issuer: 'service:live', alias: 'fx_rainbow', name: 'Rainbow Name', kind: 'Name effect', emoji: '🌈' } },
         repeatable: false,
     },
     {

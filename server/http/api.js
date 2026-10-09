@@ -30,7 +30,7 @@ const questWire = (q) => ({
     title: q.title,
     why: q.why,
     steps: q.steps.map((s) => ({ event_type: s.event_type, count: s.count, label: s.label })),
-    reward: { badge: { id: q.reward.badge.id, name: q.reward.badge.name }, coins: q.reward.coins },
+    reward: { badge: { id: q.reward.badge.id, name: q.reward.badge.name }, coins: q.reward.coins, ...(q.reward.item ? { item: { issuer: q.reward.item.issuer, alias: q.reward.item.alias, name: q.reward.item.name, kind: q.reward.item.kind } } : {}) },
     repeatable: q.repeatable,
     url: `/quests/${q.id}`,
 });

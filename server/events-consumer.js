@@ -41,7 +41,7 @@ const CONSUMER = 'quest';
 const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS]);
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
-function createEventsConsumer({ db, s, secrets = [], coins = null, accountData = null, accountSend = null, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, now = () => Date.now(), log = console }) {
     const keys = (secrets || []).filter((x) => typeof x === 'string' && x.length >= 32);
     // Receipts (quest_event_inbox) are in migrations/0002_quest.sql.
     const inbox = createPgInbox(db, { table: 'quest_event_inbox', now });
@@ -95,6 +95,8 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, accountData =
         // OpenCoins are settled after the transaction: the completion is committed first, so a wallet outage
         // cannot lose (or roll back) a completion the person really earned. A failure is recorded and retried.
         if (coins) for (const completion of outcome.completed) await coins.settle(completion);
+        // An item reward the same way (server/quests/items.js): granted in OpenVibe.Inventory after the commit.
+        if (items) for (const completion of outcome.completed) await items.settle(completion);
         return res.json({
             event_id: event.event_id, duplicate: false, outcome: outcome.outcome,
             completed: outcome.completed.map((c) => c.id),

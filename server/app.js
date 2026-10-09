@@ -29,6 +29,7 @@ const { createPrincipal } = require('./http/principal');
 const { createApi } = require('./http/api');
 const { createPageRoutes } = require('./http/pages');
 const { createCoins } = require('./quests/coins');
+const { createItems } = require('./quests/items');
 const { createEventsConsumer } = require('./events-consumer');
 const accountDataLib = require('./identity/account-data');
 const { createNetworkSender } = require('openvibe-sdk/account-data');
@@ -54,6 +55,7 @@ async function createApp(opts = {}) {
     const sso = createSso({ config, keys, fetchImpl, now: s.now, log });
     const principal = createPrincipal({ config, keys });
     const coins = createCoins({ config, s, fetchImpl, log });
+    const items = createItems({ config, s, fetchImpl, log });
     // Account export and deletion (ADR-033, ./identity/account-data.js): the three tables that hold a person's rows.
     // The sender posts to Network's internal export/deletion routes with this service's own client-credentials token;
     // a test injects a stand-in through opts.accountSend. Without a client secret the service has no way to push a
@@ -63,8 +65,8 @@ async function createApp(opts = {}) {
     const accountSend = opts.accountSend || (config.oauth.clientSecret
         ? createNetworkSender({ networkInternalUrl: config.networkInternalUrl, clientId: config.oauth.clientId, clientSecret: config.oauth.clientSecret, fetch: fetchImpl })
         : async () => { throw new Error('OV_OAUTH_CLIENT_SECRET is not set: Quest cannot answer account events'); });
-    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, accountData, accountSend, now: s.now, log });
-    const ctx = { config, s, keys, sso, principal, coins, eventsConsumer, accountData, accountSend, log };
+    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, items, accountData, accountSend, now: s.now, log });
+    const ctx = { config, s, keys, sso, principal, coins, items, eventsConsumer, accountData, accountSend, log };
 
     const app = express();
     app.disable('x-powered-by');

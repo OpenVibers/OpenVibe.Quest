@@ -37,8 +37,11 @@ async function start() {
     const timers = [];
     const coinsTimer = ctx.coins.start();
     if (coinsTimer) timers.push(coinsTimer);
+    // Item rewards owed (a failed grant, or a completion from before items) are granted by the same kind of timer.
+    const itemsTimer = ctx.items.start();
+    if (itemsTimer) timers.push(itemsTimer);
 
-    const extra = [() => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop()];
+    const extra = [() => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.items.stop()];
     createLifecycle({ server, ctx, timers, extra });
     return { server, ctx };
 }

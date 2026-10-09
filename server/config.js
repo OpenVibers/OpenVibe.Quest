@@ -72,6 +72,15 @@ function load(env = process.env) {
             globalDailyCap: Math.max(0, int(env.QUEST_COINS_GLOBAL_DAILY_CAP, 5000)),
             retryMs: Math.max(10_000, int(env.QUEST_COINS_RETRY_MS, 300_000)),
         },
+
+        // Item rewards (server/quests/items.js): some quests also give one of Live's items, granted in
+        // OpenVibe.Inventory with this service's own token (Live names Quest a grantor of those items, ADR-054 §3).
+        // On by default: an item is free and never money. QUEST_ITEMS=off records nothing and grants nothing.
+        items: {
+            mode: String(env.QUEST_ITEMS || 'on').toLowerCase() === 'off' ? 'off' : 'on',
+            inventoryUrl: trim(env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030'),
+            retryMs: Math.max(10_000, int(env.QUEST_ITEMS_RETRY_MS, 300_000)),
+        },
     };
 }
 

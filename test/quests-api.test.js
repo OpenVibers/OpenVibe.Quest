@@ -35,7 +35,7 @@ const { render } = require('../server/render/html');
             const goLive = body.quests.find((q) => q.id === 'go-live');
             assert.strictEqual(goLive.title, 'Go live once');
             assert.deepStrictEqual(goLive.steps, [{ event_type: 'live.stream.started', count: 1, label: 'Start a stream' }]);
-            assert.deepStrictEqual(goLive.reward, { badge: { id: 'first-broadcast', name: 'First Broadcast' }, coins: 10 });
+            assert.deepStrictEqual(goLive.reward, { badge: { id: 'first-broadcast', name: 'First Broadcast' }, coins: 10, item: { issuer: 'service:live', alias: 'hat_basic_cap', name: 'Basic Cap', kind: 'Hat' } });
             assert.strictEqual(goLive.repeatable, false);
             assert.strictEqual(body.coins.enabled, false, 'OpenCoins are off by default');
             assert.strictEqual(body.coins.daily_cap, 50);

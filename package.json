@@ -1,6 +1,6 @@
 {
   "name": "openvibe-quest",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "OpenVibe.Quest — Quests across the whole network.",
   "main": "server/index.js",

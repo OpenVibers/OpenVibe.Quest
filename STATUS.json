@@ -9,11 +9,11 @@
   "domain": "openvibe.quest",
   "contracts": "openvibe-contracts v0.128.0",
   "sdk": "openvibe-sdk v0.37.2",
-  "shared": "openvibe-shared v2.21.1",
+  "shared": "openvibe-shared v2.21.2",
   "packages": [
     "openvibe-contracts v0.128.0",
     "openvibe-sdk v0.37.2",
-    "openvibe-shared v2.21.1",
+    "openvibe-shared v2.21.2",
     "openvibe-publishing v1.4.0"
   ],
   "summary": "OpenVibe.Quest: one quest log across every OpenVibe site. OpenVibe.Events delivers the domain events the sites already emit to POST /internal/events (signed v2, once-only through the openvibe-sdk inbox), the person taken from the field each event's own schema defines, and a progress count, a completion and a badge move because of it. 12 first-party quests in code, grouped by the site whose events each counts. Rewards are badges and OpenCoins — credited through OpenVibe.Network's wallet, off by default (QUEST_COINS), with per-person and network-wide daily caps, failures recorded and retried. Public API and server-rendered pages, complete without JavaScript. Not deployed; OpenCoins are off until Network grants the two capabilities.",

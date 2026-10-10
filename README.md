@@ -20,6 +20,69 @@ page views, no clicks, no watch time, and no content a person wrote — not a me
 `/how-it-works` prints the complete list of what is listened to, generated from the same catalog the consumer
 subscribes to.
 
+## Owns
+
+OpenVibe.Quest owns the quest log and the catalog that describes it.
+
+- The **quest catalog** in code ([server/quests/catalog.js](server/quests/catalog.js)): 12 first-party quests, each
+  with its steps, the events that count them, its badge, its OpenCoins and any item reward, plus the list of events
+  Quest listens to. A quest may not count an event the catalog does not document; that fails at load.
+- `quest_progress` ([migrations/0002_quest.sql](migrations/0002_quest.sql)): one row per (person, quest, step) — how
+  far they are.
+- `quest_completions` ([migrations/0002_quest.sql](migrations/0002_quest.sql), extended by
+  [migrations/0004_item_rewards.sql](migrations/0004_item_rewards.sql)): one row per (person, quest) — the completion,
+  its OpenCoins state and its item-grant state.
+- `quest_badges` ([migrations/0002_quest.sql](migrations/0002_quest.sql)): one row per (person, badge).
+- `quest_event_inbox` ([migrations/0002_quest.sql](migrations/0002_quest.sql)): this service's own receipts of the
+  OpenVibe.Events deliveries it applied.
+- `account_data_events` ([migrations/0003_account_data.sql](migrations/0003_account_data.sql)): its own receipts of
+  the ADR-033 account export and deletion deliveries.
+
+It is the authority for a person's quest progress, completions and badges, and for the `quest.*` namespace. Migration
+`0001_initial.sql` creates no table.
+
+## Does not own
+
+- **Identity** — the `usr_…` subjects, the Network user id and the sign-in session are OpenVibe.Network's. Quest
+  stores the subject a delivery names and resolves the wallet id on demand; it issues and verifies no identity itself.
+- **Events** — the events and their delivery belong to OpenVibe.Events. Quest runs no activity of its own and only
+  consumes what Events delivers.
+- **Items and their definitions** — the items Quest grants (Sparkle, Hearts, Basic Cap, Fire Name, Ice Name, Rainbow
+  Name) are OpenVibe.Live's, and the instances are OpenVibe.Inventory's. Quest holds no item row.
+- **The wallet and the OpenCoins ledger** — the balance lives in OpenVibe.Network's wallet. Quest holds no balance and
+  reads none.
+- **The sites' content** — threads, posts, comments, chat messages, wiki revisions, streams and job inputs belong to
+  OpenVibe.Community, OpenVibe.Space, OpenVibe.Chat, OpenVibe.Wiki, OpenVibe.Live and OpenVibe.Tools. Quest counts
+  that they happened and stores none of them.
+
+## Depends on
+
+| Depends on | For | Env vars |
+|---|---|---|
+| **OpenVibe.Network** | sign-in with PKCE S256 (OAuth client `quest`), its JWKS, `identity.subject.resolve`, `network.coins.credit`, and the account export/deletion sender | `OV_NETWORK_URL`, `OV_NETWORK_INTERNAL_URL`, `OV_OAUTH_CLIENT_ID`, `OV_OAUTH_CLIENT_SECRET` |
+| **OpenVibe.Events** | the deliveries to `POST /internal/events` and the subscriptions it creates at boot | `QUEST_EVENTS_URL`, `QUEST_EVENTS_SECRET`, `QUEST_EVENTS_ENDPOINT` |
+| **OpenVibe.Inventory** | granting an item reward, and reading Live's item definitions by alias | `OV_INVENTORY_INTERNAL_URL` |
+| **PostgreSQL** | the store (every migration and table) | `DATABASE_URL`, `DATABASE_DIRECT_URL` |
+| **Valkey** | shared per-caller limit counters (optional: without it they count in this process) | `VALKEY_URL`, `VALKEY_PREFIX` |
+
+Packages: **openvibe-contracts** (service auth, capabilities, HTTP problems), **openvibe-sdk** (auth, the events
+inbox, account-data, limits, service lifecycle) and **openvibe-shared** (cache policy, metrics, readiness, release,
+legal pages).
+
+## Capabilities
+
+The [service manifest](node_modules/openvibe-contracts/manifests/services/quest.json) lists **no capabilities of its
+own** and produces no events; no `/api/v1` route is guarded by one ([server/http/principal.js](server/http/principal.js)
+`CAPABILITIES` is empty). Quest calls these on other services with its own client-credentials token:
+
+- `identity.subject.resolve` — OpenVibe.Network `GET /internal/identity/resolve`, to turn a subject into the wallet's
+  `network_user_id` ([server/quests/coins.js](server/quests/coins.js)).
+- `network.coins.credit` — OpenVibe.Network `POST /internal/coins/credit`, to credit a completion's OpenCoins.
+- `events.subscription.manage` — OpenVibe.Events, to create the catalog's subscriptions at boot
+  ([server/events-consumer.js](server/events-consumer.js)).
+- `inventory.item.grant` — OpenVibe.Inventory `POST /api/v1/grants`, to give a quest's item
+  ([server/quests/items.js](server/quests/items.js)).
+
 ## What works
 
 | Piece | Where | What it does |
@@ -108,6 +171,45 @@ test:pg` runs the same suite through PostgreSQL and PgBouncer (see [.github/work
 The mock Network in [test/helpers/mocks.js](test/helpers/mocks.js) also serves `/internal/identity/resolve` and
 `/internal/coins/credit`, checked as Network checks them (a `svc:quest` token with the capability, its own app id,
 idempotent by key), so the OpenCoins tests need no real wallet.
+
+## Acceptance
+
+`npm test` ([test/run.js](test/run.js)) runs every `test/*.test.js` in its own process on temp PGlite databases and
+an in-process mock of OpenVibe.Network ([test/helpers/mocks.js](test/helpers/mocks.js)); no network or running site is
+needed. `npm run test:pg` runs the same suite through PostgreSQL and PgBouncer. The main proofs:
+
+- [test/events-consumer.test.js](test/events-consumer.test.js) — a bad signature, a forwarded request and an
+  unconfigured secret are refused; the same event twice changes nothing; progress counts to completion and the badge
+  is awarded once; an event that names nobody creditable is ignored; OpenCoins off is skipped, on credits with the
+  completion id as the idempotency key, the two daily caps stop it, and a failure is recorded and retried.
+- [test/quests-api.test.js](test/quests-api.test.js) — the catalog and a quest are public; `/me/quests` requires
+  sign-in and shows only the caller's rows; the badge endpoint answers an id, a name and a date and nothing else; the
+  pages are complete without JavaScript; a hostile title is escaped.
+- [test/items.test.js](test/items.test.js) — a quest's item is granted in a stand-in Inventory with `origin: earned`
+  and the completion id, a refusal is recorded and retried, a completion from before items is granted by the retry,
+  and `QUEST_ITEMS=off` grants nothing.
+- [test/account-data.test.js](test/account-data.test.js) — an export carries only the person's own progress,
+  completions and badges; a deletion erases them whole and confirms the counts; a redelivery changes nothing.
+- [test/security-secrets.test.js](test/security-secrets.test.js) — the OAuth client secret never appears in a
+  response, the database or a log line, over every route and hostile input.
+- [test/security-session.test.js](test/security-session.test.js) — a FedCM assertion, app, service or internal token
+  is never accepted as a session cookie.
+- [test/caller-limits.test.js](test/caller-limits.test.js) — past its budget a caller gets 429 problem+json with
+  Retry-After before the route does any work, while another caller still passes.
+- [test/open-redirect.test.js](test/open-redirect.test.js) — the sign-in `next` never leaves the site.
+- [test/no-internal-key.test.js](test/no-internal-key.test.js) — no `X-Internal-Key` anywhere in the code, deploy
+  files or the running service (ADR-014).
+- [test/auth-ops.test.js](test/auth-ops.test.js) — PKCE S256 sign-in, truthful `/api/ready`, `/release.json`, and
+  loopback-only `/metrics`.
+- [test/auth-jwks.test.js](test/auth-jwks.test.js) — the Network signing key is kept across outages, a rotation is
+  honoured at once and unknown-kid floods are throttled.
+- [test/discovery.test.js](test/discovery.test.js) — `robots.txt`, `sitemap.xml`, `llms.txt`, `llms-full.txt` and the
+  JSON-LD carry real public entries only and take `lastmod` from STATUS.json, not the clock.
+- [test/service-kit.test.js](test/service-kit.test.js) — the graceful stop runs its close steps in the manifest's
+  order and resolves exit 0.
+- [test/layout.test.js](test/layout.test.js), [test/asset-cache.test.js](test/asset-cache.test.js),
+  [test/nginx-auth-limit.test.js](test/nginx-auth-limit.test.js) and [test/perf-budget.test.js](test/perf-budget.test.js)
+  — the shared boost marker and the asset cache rules, the nginx limit zones, and the home page's size budgets.
 
 ## Deploy (for the lead)
 

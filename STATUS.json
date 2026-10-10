@@ -40,7 +40,7 @@
   ],
   "capabilitiesRegistered": false,
   "serviceManifestRegistered": false,
-  "deployed": false,
+  "deployed": true,
   "placeholderInSites": false,
   "features": [
     "quest catalog",
@@ -50,5 +50,6 @@
     "server-rendered pages",
     "crawl artifacts"
   ],
-  "updated": "2026-10-10"
+  "updated": "2026-10-10",
+  "deployment": "openvibe-ovh: unit openvibe-quest.service on 127.0.0.1:4980 (git checkout /opt/openvibe.quest, env /etc/openvibe/quest.env, database ov_quest), deployed with `sudo ovhost deploy quest`; public at https://openvibe.quest since 2026-10-08."
 }

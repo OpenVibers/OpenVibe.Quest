@@ -21,6 +21,7 @@ const rateLimit = require('express-rate-limit');
 const contracts = require('openvibe-contracts');
 const cache = require('openvibe-shared/cache-policy');
 
+const { createSearchIndex } = require('./search-index');
 const configLib = require('./config');
 const { openStore } = require('./db');
 const { createKeyStore } = require('./auth/keys');
@@ -66,7 +67,9 @@ async function createApp(opts = {}) {
         ? createNetworkSender({ networkInternalUrl: config.networkInternalUrl, clientId: config.oauth.clientId, clientSecret: config.oauth.clientSecret, fetch: fetchImpl })
         : async () => { throw new Error('OV_OAUTH_CLIENT_SECRET is not set: Quest cannot answer account events'); });
     const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, items, accountData, accountSend, now: s.now, log });
-    const ctx = { config, s, keys, sso, principal, coins, items, eventsConsumer, accountData, accountSend, log };
+    // The quests in OpenVibe.Search (./search-index.js), swept on its own timer once server/index.js starts it.
+    const searchIndex = opts.searchIndex || createSearchIndex({ config, s, log });
+    const ctx = { config, s, keys, sso, principal, coins, items, eventsConsumer, accountData, accountSend, searchIndex, log };
 
     const app = express();
     app.disable('x-powered-by');

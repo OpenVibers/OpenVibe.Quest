@@ -16,7 +16,7 @@ const { gracefulStop } = require('openvibe-sdk/service');
 function createLifecycle({ server, ctx, exit, signals, timers = [], extra = [] }) {
     return gracefulStop({
         name: 'OpenVibe.Quest', server, deadlineExitCode: 0, exit, signals, deadlineMs: 10_000,
-        close: [() => { for (const t of timers) clearInterval(t); }, () => ctx.keys.client.stop(), () => ctx.s.close(), ...extra],
+        close: [() => { for (const t of timers) clearInterval(t); }, () => ctx.keys.client.stop(), () => ctx.searchIndex.stop(), () => ctx.s.close(), ...extra],
     });
 }
 
@@ -29,6 +29,7 @@ async function start() {
     });
     server.keepAliveTimeout = 65_000;
     ctx.keys.client.start();
+    ctx.searchIndex.start();
 
     // Subscribe to the events the catalog counts at OpenVibe.Events (idempotent; off without QUEST_EVENTS_URL
     // and QUEST_EVENTS_SECRET) and come back to OpenCoins a failed credit owes (off unless QUEST_COINS=on).

@@ -54,7 +54,7 @@ function createPageRoutes(ctx) {
             eyebrow: `${SITE_NAME} · ${TAGLINE}`,
             title: 'Quests across OpenVibe.',
             accent: 'Badges for what you really do.',
-            lede: `${SITE_NAME} is the network's shared quest log: one place that knows what you have really done on every OpenVibe site, and pays you for it in badges and OpenCoins. Quest runs no activities of its own — it listens to what the sites already report, and nothing else.`,
+            lede: `${SITE_NAME} is the network's shared quest log: one place that knows what you have really done on the OpenVibe sites it follows, and rewards it with badges (and OpenCoins, once they are switched on). Quest runs no activities of its own — it listens to what the sites already report, and nothing else.`,
             actions: signedIn(req)
                 ? [{ label: 'Your quest log', href: '/me', primary: true }, { label: 'How it works', href: '/how-it-works' }]
                 : [{ label: 'Sign in to start', href: '/auth/login?next=%2Fme', primary: true }, { label: 'How it works', href: '/how-it-works' }],
@@ -67,9 +67,9 @@ function createPageRoutes(ctx) {
             body: html`${raw(hero)}
 ${raw(showcase.features({
                 title: 'What Quest is',
-                lede: 'One quest log across every OpenVibe site, built on what the sites already tell the network.',
+                lede: 'One quest log across eight OpenVibe sites (Live, the Network, Community, Chat, the Wiki, Games, Tools and Space), built on what the sites already tell the network.',
                 items: [
-                    { icon: 'ov:page', title: 'One log, every site', text: 'A stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat: the same log, grouped by the site the event came from.' },
+                    { icon: 'ov:page', title: 'One log, many sites', text: 'A stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat: the same log, grouped by the site the event came from.' },
                     { icon: 'ov:account', title: 'Rewards are badges', text: 'A quest pays a badge that shows on your profile across the network and, once they are switched on, OpenCoins.' },
                     { icon: 'ov:tools', title: 'OpenCoins, not Vibes', text: 'OpenCoins are loyalty points credited through OpenVibe.Network\'s wallet. They are never money, they are not Vibes, and Vibes are never touched here.' },
                     { icon: 'ov:games', title: 'Made by communities next', text: 'Quests a streamer or a community writes themselves need moderation, which this release does not have yet. The tables and the API already key everything by quest id.' },

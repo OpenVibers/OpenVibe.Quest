@@ -3,7 +3,7 @@
 > Quests across the whole network.
 
 **Status:** first release. The quest log, the events consumer, the OpenCoins crediting and the pages are written and
-tested; it is not deployed, and OpenCoins are off until the feature is turned on.
+tested; it is deployed, and OpenCoins are off until the feature is turned on.
 **Domain:** `openvibe.quest` · **Port:** 4980 · **Service id:** `quest` · **Env prefix:** `QUEST`
 **License:** AGPL-3.0 (same as every OpenVibe service).
 

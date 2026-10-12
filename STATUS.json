@@ -31,7 +31,7 @@
     "Account export and deletion (ADR-033): the quest progress, completions and badges a person has are exported to OpenVibe.Network on network.account.export_requested and deleted whole on network.account.deleted, with the counts confirmed back; the two account topics join the catalog's events in the boot subscriptions (server/identity/account-data.js)"
   ],
   "notYet": [
-    "Registration with OpenVibe.Services, and its capabilities are not in openvibe-contracts yet (no quest.* manifest exists)",
+    "Its own capabilities: the quest manifest in openvibe-contracts lists none yet (no quest.* capability exists)",
     "OpenCoins are off in production until OpenVibe.Network grants the quest client identity.subject.resolve and network.coins.credit",
     "Community-made quests (streamers, communities, mods): they need moderation, which this release does not have",
     "Repeatable quests and seasonal resets: every quest completes once per person",
@@ -39,7 +39,7 @@
     "Quest chains, leaderboards and per-community quests; a streamer's getting-started steps still live on OpenVibe.Live"
   ],
   "capabilitiesRegistered": false,
-  "serviceManifestRegistered": false,
+  "serviceManifestRegistered": true,
   "deployed": true,
   "placeholderInSites": false,
   "features": [

@@ -211,7 +211,7 @@ const QUESTS = Object.freeze([
         title: 'Bring a robot online',
         why: 'A robot is yours to drive from any browser once a device connects it: a Raspberry Pi, an ESP32, a phone.',
         steps: [{ event_type: 'bot.robot.online', count: 1, label: 'Connect a device to one of your robots' }],
-        reward: { badge: { id: 'robot-wrangler', name: 'Robot Wrangler' }, coins: 20 },
+        reward: { badge: { id: 'robot-pilot', name: 'Robot Pilot' }, coins: 20 },
         repeatable: false,
     },
     {

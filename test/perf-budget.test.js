@@ -17,8 +17,9 @@ const BUDGETS = {
     // Raised 2026-10-08 with the product: the home page now carries the quest catalog (12 quests, grouped by
     // site, each with its reward) and the list of the events Quest counts. Measured 34.0 KB raw / 7.7 KB brotli.
     // Raised 2026-10-12 with openvibe-shared 4.1.3: the head reserves the navbar's 52px (120 bytes). Measured 37.6 KB raw.
-    htmlRawKB: 41,   // measured 37.6 (the home page: hero, features, the quests, the events, cta, JSON-LD)
-    htmlBrotliKB: 8.5,   // 7.7
+    // Raised 2026-10-15: five more quests (Blog, Deals, Run, Inventory) and their events on the home page. Measured 43 KB raw.
+    htmlRawKB: 47,   // measured 43 (the home page: hero, features, the quests, the events, cta, JSON-LD)
+    htmlBrotliKB: 9.8,   // 9
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 264,   // 239.8
     jsBrotliKB: 62.5,   // 56.5

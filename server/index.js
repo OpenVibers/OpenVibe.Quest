@@ -49,6 +49,9 @@ async function start() {
     const itemsTimer = ctx.items.start();
     if (itemsTimer) timers.push(itemsTimer);
 
+    // App quests: each project with an active production quest gets its app.<project_key>.* subscription.
+    ctx.appQuests.setSubscriber(subscriptions ? subscriptions.subscribe : null);
+    ctx.appQuests.load().catch((err) => console.warn('[Quest] app quests not loaded:', err.message));
     const extra = [() => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.items.stop()];
     createLifecycle({ server, ctx, timers, extra });
     return { server, ctx };

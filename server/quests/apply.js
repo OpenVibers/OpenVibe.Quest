@@ -65,6 +65,9 @@ function personOf(event) {
         case 'bot.robot.online':          // payload.owner (usr_…, contracts 0.192.0; absent from older events)
             return isUser(p.owner) ? p.owner : null;
         default:
+            // An app's own event (app quests, server/quests/app-quests.js): the actor, when the app published it
+            // on_behalf_of a person; an app acting as itself is nobody.
+            if (String(event && event.event_type).startsWith('app.')) return refUser(event.actor);
             return null;
     }
 }
@@ -75,10 +78,10 @@ function personOf(event) {
  * with outcome 'ignored:subject' | 'ignored:type' | 'progress' | 'completed'. `completed` is what the caller
  * still has to do about OpenCoins.
  */
-async function apply(db, event, { at, newId }) {
+async function apply(db, event, { at, newId, appQuests = null }) {
     const subject = personOf(event);
     if (!subject) return { subject: null, outcome: 'ignored:subject', completed: [] };
-    const quests = catalog.forEvent(event);
+    const quests = [...catalog.forEvent(event), ...(appQuests ? await appQuests.forEvent(db, event) : [])];
     if (!quests.length) return { subject, outcome: 'ignored:type', completed: [] };
 
     const completed = [];

@@ -49,7 +49,8 @@ function createPageRoutes(ctx) {
         { empty: 'No events.' });
 
     // ── Home ─────────────────────────────────────────────────
-    r.get('/', (req, res) => {
+    r.get('/', async (req, res) => {
+        const appList = ctx.appQuests ? await ctx.appQuests.listed(24) : [];
         const hero = showcase.hero({
             eyebrow: `${SITE_NAME} · ${TAGLINE}`,
             title: 'Quests across OpenVibe.',
@@ -73,13 +74,16 @@ ${raw(showcase.features({
                     { icon: 'ov:page', title: 'One log, many sites', text: 'A stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat: the same log, grouped by the site the event came from.' },
                     { icon: 'ov:account', title: 'Rewards are badges', text: coinsUi.coinsEnabled ? 'A quest pays a badge that shows on your profile across the network, and OpenCoins into your OpenVibe.Network wallet.' : 'A quest pays a badge that shows on your profile across the network and, once they are switched on, OpenCoins.' },
                     { icon: 'ov:tools', title: 'OpenCoins, not Vibes', text: 'OpenCoins are loyalty points credited through OpenVibe.Network\'s wallet. They are never money, they are not Vibes, and Vibes are never touched here.' },
-                    { icon: 'ov:games', title: 'Made by communities next', text: 'Quests a streamer or a community writes themselves need moderation, which this release does not have yet. The tables and the API already key everything by quest id.' },
+                    { icon: 'ov:games', title: 'Made by apps', text: 'A developer app defines quests on its own events with an app token (the SDK\'s quests): they pay a badge named for the app, never OpenCoins. Quests a streamer writes come later.' },
                 ],
             }))}
 <section class="sc-sec" id="the-quests" aria-labelledby="the-quests-h"><h2 id="the-quests-h">The quests</h2>
 <p class="sc-lede">Every quest below counts something a person really did on an OpenVibe site. Grouped by the site whose events it counts.</p>
 ${quests.list(catalog.grouped({ fold: true }), coinsUi)}
 ${quests.coinsNote(coinsUi)}</section>
+${appList.length ? html`<section class="sc-sec" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
+<p class="sc-lede">Quests that developer apps on OpenVibe define on their own events. Each pays a badge named for the app, never OpenCoins.</p>
+<ul class="quest-list">${appList.map((q) => html`<li class="quest-card"><h3><a href="/apps/quests/${q.id}">${q.title}</a></h3>${q.why ? html`<p>${q.why}</p>` : ''}<p class="muted">Badge: ${q.reward.badge.name}${q.url ? html` · <a href="${q.url}" rel="nofollow noopener">Where to do it</a>` : ''}</p></li>`)}</ul></section>` : ''}
 <section class="sc-sec" id="how-progress-works" aria-labelledby="how-progress-works-h"><h2 id="how-progress-works-h">How progress works</h2>
 <p class="sc-lede">Quest does not watch you and does not ask the sites who you are. The network's event backbone,
 OpenVibe.Events, delivers the domain events a site already emits, and Quest counts the ones below — one per real
@@ -93,6 +97,37 @@ ${raw(showcase.cta({
                 text: signedIn(req) ? 'Your progress, your badges, and what each quest still needs.' : 'Sign in with OpenVibe and the sites you already use start counting.',
                 actions: signedIn(req) ? [{ label: 'Your quest log', href: '/me', primary: true }] : [{ label: 'Sign in with OpenVibe', href: '/auth/login?next=%2Fme', primary: true }],
             }))}`,
+        });
+    });
+
+    // ── An app quest (server/quests/app-quests.js) ──────────
+    r.get('/apps/quests/:id', async (req, res) => {
+        const quest = ctx.appQuests ? await ctx.appQuests.byId(req.params.id) : null;
+        if (!quest || quest.env !== 'production') return page(req, res, {
+            title: 'No such quest',
+            body: html`<h1>No such quest</h1><p>There is no app quest at this address. <a href="/#app-quests">Quests made by apps</a> lists them.</p>`,
+        }, 404);
+        const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
+        const [rows, completion, holders] = await Promise.all([
+            mine ? store.progressOf(s.db, req.viewer.subject, quest.id) : [],
+            mine ? store.completion(s.db, req.viewer.subject, quest.id) : null,
+            store.badgeHolders(s.db, quest.reward.badge.id),
+        ]);
+        const seen = new Map(rows.map((x) => [Number(x.step), Number(x.count)]));
+        return page(req, res, {
+            index: quest.status === 'active', cache: mine ? null : PUBLIC_CACHE,
+            title: quest.title, description: quest.why || `${quest.title}: a quest an OpenVibe app made.`,
+            crumbs: [{ label: 'Quests', href: '/' }, { label: 'Made by apps', href: '/#app-quests' }, { label: quest.title }],
+            body: html`<h1>${quest.title}</h1>
+${quest.why ? html`<p class="lede">${quest.why}</p>` : ''}
+<p class="muted">Made by an OpenVibe developer app (project <code>${quest.project_id}</code>)${quest.url ? html` · <a href="${quest.url}" rel="nofollow noopener">Where to do it</a>` : ''}.${quest.status === 'retired' ? ' Retired: it no longer counts.' : ''}</p>
+<h2>What it counts</h2>
+<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${(seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+<h2>The reward</h2>
+<p>The badge <strong>${quest.reward.badge.name}</strong>. App quests never pay OpenCoins.</p>
+<p class="muted">${holders ? html`${holders} ${holders === 1 ? 'person has' : 'people have'} this badge.` : 'A badge is awarded once and kept.'}</p>
+${completion ? html`<div class="notice" role="status">You completed this quest on <strong>${String(completion.completed_at).slice(0, 10)}</strong>.</div>` : ''}
+<p><a href="/">All quests</a></p>`,
         });
     });
 
@@ -188,7 +223,7 @@ each quest still needs, and the badges you have earned.</p>
         const questState = (q) => (done.has(q.id) ? 'done' : (seen.get(q.id) && seen.get(q.id).size && [...(seen.get(q.id).values())].some((n) => n > 0) ? 'started' : 'new'));
         const started = catalog.all().filter((q) => questState(q) === 'started');
         const finished = catalog.all().filter((q) => questState(q) === 'done');
-        const badge = (id) => catalog.badgeById(id) || { id, name: id };
+        const badge = (id) => catalog.badgeById(id) || { id, name: (ctx.appQuests && ctx.appQuests.badgeName(id)) || id };
 
         return page(req, res, {
             title: 'Your quest log',

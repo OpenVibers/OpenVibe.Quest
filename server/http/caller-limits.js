@@ -32,7 +32,10 @@ function caller(req) {
  *
  *   'quest.thing.create': { minute: 6, hour: 60 },
  */
-const BUDGETS = {};
+const BUDGETS = {
+    // An app defining or retiring its quests (server/quests/app-quests.js).
+    'quest.app_quest.write': { minute: 20, hour: 200 },
+};
 
 function createCallerLimits({ config, now = () => Date.now(), registry = null, log = console, enabled = true, valkey = null }) {
     const refused = registry

@@ -62,6 +62,7 @@ function personOf(event) {
         case 'run.job.succeeded':         // payload.requester (identity.subject-ref@1: a user, service, app or mod)
             return refUser(p.requester);
         case 'inventory.item.equipped':   // payload.owner (usr_…)
+        case 'bot.robot.online':          // payload.owner (usr_…, contracts 0.192.0; absent from older events)
             return isUser(p.owner) ? p.owner : null;
         default:
             return null;

@@ -175,7 +175,7 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok(quest.text.includes('<code>task</code> <code>emote</code>'), 'the quest page says which task it counts');
         });
 
-        await check('the Blog, Deals, Run and Inventory quests: each event credits its person; a service never does', async () => {
+        await check('the Blog, Deals, Run, Inventory and Bot quests: each event credits its person; a service never does', async () => {
             const done = async () => (await completions(t, sam.subject)).map((c) => c.quest_id);
             // A post published by a schedule or a service is nobody's.
             await deliver(t, envelope('blog.post.published', { canonical_url: 'https://openvibe.blog/@sam/hi' }, { source: 'blog', actor: { type: 'service', id: 'blog' } }));
@@ -194,6 +194,10 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok((await done()).includes('run-a-job'));
             await deliver(t, envelope('inventory.item.equipped', { instance_id: 'i', definition_id: 'd', kind: 'hat', slot: 'hat', owner: sam.subject }, { source: 'inventory' }));
             assert.ok((await done()).includes('wear-an-item'));
+            await deliver(t, envelope('bot.robot.online', { robot_id: 'rob_1', device_id: 'dev_1' }, { source: 'bot' }));
+            assert.ok(!(await done()).includes('bring-a-robot-online'), 'an event that does not name the owner credits nobody');
+            await deliver(t, envelope('bot.robot.online', { robot_id: 'rob_1', device_id: 'dev_1', owner: sam.subject }, { source: 'bot' }));
+            assert.ok((await done()).includes('bring-a-robot-online'));
         });
 
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {

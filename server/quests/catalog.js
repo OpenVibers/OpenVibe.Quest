@@ -41,6 +41,7 @@ const SITES = Object.freeze({
     'openvibe.deals': { name: 'OpenVibe.Deals', what: 'deals the community shares and votes on' },
     'openvibe.run': { name: 'OpenVibe.Run', what: 'jobs run on nodes' },
     'inventory.openvibe.network': { name: 'OpenVibe.Inventory', what: 'the items you own across OpenVibe' },
+    'openvibe.bot': { name: 'OpenVibe.Bot', what: 'robots you drive from the browser' },
 });
 
 /**
@@ -202,6 +203,15 @@ const QUESTS = Object.freeze([
         why: 'Hats, name effects and particles you earn show on every OpenVibe site once you wear them.',
         steps: [{ event_type: 'inventory.item.equipped', count: 1, label: 'Equip an item from your inventory' }],
         reward: { badge: { id: 'dressed-up', name: 'Dressed Up' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'bring-a-robot-online',
+        site: 'openvibe.bot',
+        title: 'Bring a robot online',
+        why: 'A robot is yours to drive from any browser once a device connects it: a Raspberry Pi, an ESP32, a phone.',
+        steps: [{ event_type: 'bot.robot.online', count: 1, label: 'Connect a device to one of your robots' }],
+        reward: { badge: { id: 'robot-pilot', name: 'Robot Pilot' }, coins: 20 },
         repeatable: false,
     },
     {
@@ -427,6 +437,7 @@ const EVENTS = Object.freeze([
     { event_type: 'deals.vote.changed', site: 'openvibe.deals', what: 'A vote on a deal was cast or changed; the envelope actor is the voter.' },
     { event_type: 'run.job.succeeded', site: 'openvibe.run', what: 'A job finished on a node; the payload names its requester (a service or app requester is ignored).' },
     { event_type: 'inventory.item.equipped', site: 'inventory.openvibe.network', what: 'An item was equipped; the payload names its owner, never what else they own.' },
+    { event_type: 'bot.robot.online', site: 'openvibe.bot', what: 'A device connected and serves a robot; the payload names the robot\'s owner (events from before Bot named it are ignored).' },
 ]);
 
 // The events Quest actually counts: the consumer subscribes to exactly these, and a quest may not count an event

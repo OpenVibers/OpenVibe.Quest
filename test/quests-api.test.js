@@ -177,5 +177,23 @@ const { render } = require('../server/render/html');
             assert.ok(!page.text.includes('<script>alert(1)'), 'the requested path is never echoed as markup');
         });
     } finally { await t.close(); }
+
+    // The home's OpenCoins wording follows QUEST_COINS: "once they are switched on" only while they are off.
+    const on = await boot({ env: { QUEST_COINS: 'on' } });
+    try {
+        await check('with QUEST_COINS=on the home says quests pay OpenCoins, not that they will', async () => {
+            const home = await on.get('/');
+            assert.strictEqual(home.status, 200);
+            assert.ok(!home.text.includes('once they are switched on'), 'no promise of something already on');
+            assert.ok(home.text.includes('rewards it with badges and OpenCoins'));
+            assert.ok(home.text.includes('OpenCoins into your OpenVibe.Network wallet'));
+        });
+    } finally { await on.close(); }
+    const off = await boot();
+    try {
+        await check('with QUEST_COINS off the home still says they come later', async () => {
+            assert.ok((await off.get('/')).text.includes('once they are switched on'));
+        });
+    } finally { await off.close(); }
     done();
 })().catch((err) => { console.error(err); process.exit(1); });

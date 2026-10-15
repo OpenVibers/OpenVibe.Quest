@@ -55,6 +55,14 @@ function personOf(event) {
             return refUser(p.owner);
         case 'live.setup.task_completed': // payload.user (the streamer; the envelope subject and actor are the same person)
             return refUser(p.user);
+        case 'blog.post.published':       // the envelope actor: the person who published (a schedule or a service is not one)
+        case 'deals.offer.created':       // the envelope actor: the submitter (svc:deals for an imported deal)
+        case 'deals.vote.changed':        // the envelope actor: the voter
+            return refUser(event.actor);
+        case 'run.job.succeeded':         // payload.requester (identity.subject-ref@1: a user, service, app or mod)
+            return refUser(p.requester);
+        case 'inventory.item.equipped':   // payload.owner (usr_…)
+            return isUser(p.owner) ? p.owner : null;
         default:
             return null;
     }

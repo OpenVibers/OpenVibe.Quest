@@ -87,7 +87,7 @@ own** and produces no events; no `/api/v1` route is guarded by one ([server/http
 
 | Piece | Where | What it does |
 |---|---|---|
-| Catalog | [server/quests/catalog.js](server/quests/catalog.js) | 12 first-party quests in code, one per real thing a person can do, plus the whole list of events Quest listens to (and the one it does not). A quest may not count an event the catalog does not document: that fails at load |
+| Catalog | [server/quests/catalog.js](server/quests/catalog.js) | 35 first-party quests in code (the 18 of the Live setup series among them), one per real thing a person can do, plus the whole list of events Quest listens to (and the one it does not). A quest may not count an event the catalog does not document: that fails at load |
 | Events consumer | [server/events-consumer.js](server/events-consumer.js) | `POST /internal/events`, exactly as OpenVibe.Space does it: raw body, `parseDelivery(…, { requireV2: true })`, the `openvibe-sdk` inbox for once-only application, forwarding headers refused, 503 without `QUEST_EVENTS_SECRET`. It subscribes to the catalog's events at boot (idempotent, off without `QUEST_EVENTS_URL`) |
 | What moves a quest | [server/quests/apply.js](server/quests/apply.js) | The person is taken from the field the event's own schema defines (`channel.subject`, `follower`, `author`, `user_subject`, `player.subject`, `owner`; the envelope actor only where the schema says the actor *is* that person). No subject, a `gst_` guest, or a service/app/mod principal → ignored, nothing written |
 | Quest log | [server/quests/store.js](server/quests/store.js), [migrations/0002_quest.sql](migrations/0002_quest.sql) | Progress per step, one completion per person per quest (unique), one badge per person, and the Events receipts. Two deliveries of the same event change nothing; so does a replay of the whole request |
@@ -129,6 +129,10 @@ OpenVibe.Events delivers an event when a site really does something. Quest count
 | `games.player.joined` | OpenVibe.Games | the player's account subject (a guest is ignored) |
 | `tools.job.created` | OpenVibe.Tools | the owner (an anonymous session is ignored) |
 | `live.setup.task_completed` | OpenVibe.Live | `payload.user`, the streamer who finished a task on Live's go-live setup list |
+| `blog.post.published` | OpenVibe.Blog | the envelope actor (a schedule or a service publishing is nobody) |
+| `deals.offer.created` / `deals.vote.changed` | OpenVibe.Deals | the envelope actor: the submitter or the voter (an imported deal's actor is `svc:deals`) |
+| `run.job.succeeded` | OpenVibe.Run | `payload.requester` when it is a user (an app's or a service's job is nobody's) |
+| `inventory.item.equipped` | OpenVibe.Inventory | `payload.owner` |
 
 A step can also name payload values to `match` (`{ task: 'emote' }`): the "Set up your channel" series is one
 quest per Live setup task, plus one that counts all 18 tasks. The home page shows a series as one card; its page is
@@ -142,7 +146,7 @@ coins are recorded once; a redelivery of the same event, or the whole request ag
 | **OpenVibe.Events** (`openvibe.events`) | the domain events that move the log, `POST /internal/events`, loopback only | Signed deliveries only: `X-OpenVibe-Signature-V2` (HMAC-SHA256 over `<timestamp>.<raw body>`), a 300-second replay window, `requireV2`, the secret from `QUEST_EVENTS_SECRET` (32+ characters, comma-separated for rotation). A delivery that carries a forwarding header is refused: nginx never proxies this route. Once-only application is the `openvibe-sdk` inbox, in the same transaction as the writes |
 | **openvibe-contracts** v0.190.0 | the shape of every event and of the two Network calls | Every field read is the one the schema at `contracts/events/payloads/<type>.v1.json` defines; no field is inferred and nothing about a person is taken from a name or from the request |
 | **OpenVibe.Network** (`openvibe.network`) | resolving a subject to its wallet id, and crediting OpenCoins | `GET /internal/identity/resolve` (capability `identity.subject.resolve`, `identity.resolve-result@1`) gives `network_user_id`; `POST /internal/coins/credit` (capability `network.coins.credit`, body `network.coins-change-request@1`, answer `network.coins-balance-result@1`) credits, with `app_id: quest` — a service token may only name its own app id. Both use this service's own client credentials over the internal URL; no token is logged |
-| **OpenVibe sites** (Live, Community, Space, Chat, Wiki, Games, Tools, Network) | nothing is fetched from them | Quest makes no outbound request to any site, and no URL from a request ever decides one: the only host it calls is `OV_NETWORK_INTERNAL_URL` |
+| **OpenVibe sites** (Live, Community, Space, Chat, Wiki, Games, Tools, Network, Blog, Deals, Run, Inventory) | nothing is fetched from them | Quest makes no outbound request to any site, and no URL from a request ever decides one: the only host it calls is `OV_NETWORK_INTERNAL_URL` |
 
 Rewards are badges and OpenCoins. Nothing here is money, and nothing here is Vibes.
 

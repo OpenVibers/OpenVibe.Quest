@@ -175,6 +175,27 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok(quest.text.includes('<code>task</code> <code>emote</code>'), 'the quest page says which task it counts');
         });
 
+        await check('the Blog, Deals, Run and Inventory quests: each event credits its person; a service never does', async () => {
+            const done = async () => (await completions(t, sam.subject)).map((c) => c.quest_id);
+            // A post published by a schedule or a service is nobody's.
+            await deliver(t, envelope('blog.post.published', { canonical_url: 'https://openvibe.blog/@sam/hi' }, { source: 'blog', actor: { type: 'service', id: 'blog' } }));
+            assert.ok(!(await done()).includes('publish-a-blog-post'));
+            await deliver(t, envelope('blog.post.published', { canonical_url: 'https://openvibe.blog/@sam/hi' }, { source: 'blog', actor: { type: 'user', id: sam.subject } }));
+            assert.ok((await done()).includes('publish-a-blog-post'));
+            await deliver(t, envelope('deals.offer.created', { offer_id: 'off_2' }, { source: 'deals', actor: { type: 'user', id: sam.subject } }));
+            assert.ok((await done()).includes('share-a-deal'));
+            for (let i = 0; i < 9; i++) await deliver(t, envelope('deals.vote.changed', { offer_id: `off_${i}`, value: 1 }, { source: 'deals', actor: { type: 'user', id: sam.subject } }));
+            assert.ok(!(await done()).includes('vote-on-deals'), 'nine votes are not ten');
+            await deliver(t, envelope('deals.vote.changed', { offer_id: 'off_9', value: -1 }, { source: 'deals', actor: { type: 'user', id: sam.subject } }));
+            assert.ok((await done()).includes('vote-on-deals'));
+            await deliver(t, envelope('run.job.succeeded', { job_id: 'job_1', requester: { type: 'app', id: 'app_x' } }, { source: 'run' }));
+            assert.ok(!(await done()).includes('run-a-job'), 'an app\'s job is nobody\'s');
+            await deliver(t, envelope('run.job.succeeded', { job_id: 'job_2', requester: { type: 'user', id: sam.subject } }, { source: 'run' }));
+            assert.ok((await done()).includes('run-a-job'));
+            await deliver(t, envelope('inventory.item.equipped', { instance_id: 'i', definition_id: 'd', kind: 'hat', slot: 'hat', owner: sam.subject }, { source: 'inventory' }));
+            assert.ok((await done()).includes('wear-an-item'));
+        });
+
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {
             const before = (await completions(t, sam.subject)).length;
             const guest = 'gst_' + '0'.repeat(26);
@@ -182,7 +203,7 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
                 chatMessage(null),                                     // a private-ish/guest message: no user_subject
                 chatMessage(guest),                                    // a guest id is not a usr_ subject
                 envelope('chat.room.message.created', { message_id: 3, room: { id: 'r', slug: 'g', name: 'G' }, text: 'x', created_at: iso(), user_subject: null }, { source: 'chat' }),
-                envelope('deals.vote.changed', { value: 1 }, { source: 'deals', actor: { type: 'user', id: sam.subject } }),   // no person in the payload
+                envelope('deals.offer.created', { offer_id: 'off_1' }, { source: 'deals', actor: { type: 'service', id: 'deals' } }),   // an imported deal: a service, not a person
                 envelope('quest.something.happened', { user_subject: sam.subject }),                                            // not an event Quest counts
             ]) {
                 const r = await deliver(t, event);

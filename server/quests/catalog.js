@@ -37,6 +37,10 @@ const SITES = Object.freeze({
     'openvibe.games': { name: 'OpenVibe.Games', what: 'the games platform' },
     'openvibe.tools': { name: 'OpenVibe.Tools', what: 'the tools' },
     'openvibe.space': { name: 'OpenVibe.Space', what: 'forums in a Space' },
+    'openvibe.blog': { name: 'OpenVibe.Blog', what: 'blogs' },
+    'openvibe.deals': { name: 'OpenVibe.Deals', what: 'deals the community shares and votes on' },
+    'openvibe.run': { name: 'OpenVibe.Run', what: 'jobs run on nodes' },
+    'inventory.openvibe.network': { name: 'OpenVibe.Inventory', what: 'the items you own across OpenVibe' },
 });
 
 /**
@@ -153,6 +157,51 @@ const QUESTS = Object.freeze([
         why: 'A Space is a community\'s own forum; a thread is how you join it.',
         steps: [{ event_type: 'space.thread.created', count: 1, label: 'Start a thread in a Space' }],
         reward: { badge: { id: 'space-thread-starter', name: 'Space Thread Starter' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'publish-a-blog-post',
+        site: 'openvibe.blog',
+        title: 'Publish a blog post',
+        why: 'Every member gets a blog on OpenVibe.Blog; a first post makes it yours.',
+        steps: [{ event_type: 'blog.post.published', count: 1, label: 'Publish a post on your blog' }],
+        reward: { badge: { id: 'first-post', name: 'First Post' }, coins: 15 },
+        repeatable: false,
+    },
+    {
+        id: 'share-a-deal',
+        site: 'openvibe.deals',
+        title: 'Share a deal',
+        why: 'A deal is only worth something when somebody posts it with its price and where it was seen.',
+        steps: [{ event_type: 'deals.offer.created', count: 1, label: 'Submit a deal' }],
+        reward: { badge: { id: 'deal-spotter', name: 'Deal Spotter' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'vote-on-deals',
+        site: 'openvibe.deals',
+        title: 'Vote on ten deals',
+        why: 'Votes decide what is hot on OpenVibe.Deals, one person, one vote.',
+        steps: [{ event_type: 'deals.vote.changed', count: 10, label: 'Vote a deal up or down' }],
+        reward: { badge: { id: 'deal-judge', name: 'Deal Judge' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'run-a-job',
+        site: 'openvibe.run',
+        title: 'Run a job on a node',
+        why: 'OpenVibe.Run sends a job to a machine that can do it, yours or the network\'s.',
+        steps: [{ event_type: 'run.job.succeeded', count: 1, label: 'Run a job that finishes' }],
+        reward: { badge: { id: 'job-runner', name: 'Job Runner' }, coins: 15 },
+        repeatable: false,
+    },
+    {
+        id: 'wear-an-item',
+        site: 'inventory.openvibe.network',
+        title: 'Wear an item',
+        why: 'Hats, name effects and particles you earn show on every OpenVibe site once you wear them.',
+        steps: [{ event_type: 'inventory.item.equipped', count: 1, label: 'Equip an item from your inventory' }],
+        reward: { badge: { id: 'dressed-up', name: 'Dressed Up' }, coins: 5 },
         repeatable: false,
     },
     {
@@ -373,6 +422,11 @@ const EVENTS = Object.freeze([
     { event_type: 'games.player.joined', site: 'openvibe.games', what: 'A character entered a world; the payload names its account\'s user subject (a guest is ignored).' },
     { event_type: 'tools.job.created', site: 'openvibe.tools', what: 'A tool job was accepted and queued; the payload names its owner (an anonymous session is ignored).' },
     { event_type: 'live.setup.task_completed', site: 'openvibe.live', what: 'A streamer finished a task on Live\'s go-live setup list for the first time; the payload names the streamer and the task, never what they made.' },
+    { event_type: 'blog.post.published', site: 'openvibe.blog', what: 'A post was published; the envelope actor is the person who published it (a scheduled or service publish is ignored).' },
+    { event_type: 'deals.offer.created', site: 'openvibe.deals', what: 'A deal was submitted; the envelope actor is the person who posted it (deals imported from a source are ignored).' },
+    { event_type: 'deals.vote.changed', site: 'openvibe.deals', what: 'A vote on a deal was cast or changed; the envelope actor is the voter.' },
+    { event_type: 'run.job.succeeded', site: 'openvibe.run', what: 'A job finished on a node; the payload names its requester (a service or app requester is ignored).' },
+    { event_type: 'inventory.item.equipped', site: 'inventory.openvibe.network', what: 'An item was equipped; the payload names its owner, never what else they own.' },
 ]);
 
 // The events Quest actually counts: the consumer subscribes to exactly these, and a quest may not count an event

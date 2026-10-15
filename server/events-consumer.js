@@ -42,7 +42,7 @@ const CONSUMER = 'quest';
 const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS]);
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
-function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, appQuests = null, now = () => Date.now(), log = console }) {
     const keys = (secrets || []).filter((x) => typeof x === 'string' && x.length >= 32);
     // Receipts (quest_event_inbox) are in migrations/0002_quest.sql.
     const inbox = createPgInbox(db, { table: 'quest_event_inbox', now });
@@ -81,7 +81,7 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, items = null,
 
         let outcome;
         try {
-            const r = await inbox.once(CONSUMER, event.event_id, (t) => apply(t, event, { at: new Date(now()).toISOString(), newId: s.newId }));
+            const r = await inbox.once(CONSUMER, event.event_id, (t) => apply(t, event, { at: new Date(now()).toISOString(), newId: s.newId, appQuests }));
             if (r.duplicate) { stats.duplicates++; return res.json({ event_id: event.event_id, duplicate: true, outcome: null }); }
             outcome = r.result;
         } catch (err) {
@@ -138,8 +138,14 @@ function startSubscriptions({ config, port, secret, eventsUrl = config.events.ur
         if (++i < delays.length) { timer = setTimeout(run, delays[i]); if (timer.unref) timer.unref(); } else log.warn('[Events consumer] subscriptions not created:', err.message);
     }); };
     timer = setTimeout(run, delays[0]); if (timer.unref) timer.unref();
+    /** One more topic (an app project's events, app.<project_key>.*): idempotent, a 409 means it exists. */
+    const subscribe = async (topic) => {
+        const r = await call('POST', '/api/v1/subscriptions', { topic_pattern: topic, endpoint, secret });
+        if (!r.ok && r.status !== 409) throw new Error(`subscribing to ${topic}: ${r.status} ${r.body.code || ''}`);
+        if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (${topic} → ${endpoint})`);
+    };
     // Graceful stop: no further attempts (they run again at the next start).
-    return { topics: TOPICS, endpoint, stop() { stopped = true; if (timer) clearTimeout(timer); timer = null; } };
+    return { topics: TOPICS, endpoint, subscribe, stop() { stopped = true; if (timer) clearTimeout(timer); timer = null; } };
 }
 
 module.exports = { createEventsConsumer, startSubscriptions, CONSUMER, TOPICS };

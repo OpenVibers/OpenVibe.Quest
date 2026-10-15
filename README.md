@@ -108,6 +108,9 @@ own** and produces no events; no `/api/v1` route is guarded by one ([server/http
 | `GET /api/v1/quests/:id` | anyone | one quest: its steps, its events, its reward |
 | `GET /api/v1/me/quests` | a signed-in person | your log: progress per step, completions (with what happened to their coins) and your badges |
 | `GET /api/v1/profiles/:subject/badges` | anyone | a person's badges: id, name and date — nothing else, ever |
+| `PUT /api/v1/app-quests/:slug` | a developer app (`quest.app_quest.manage`) | create or replace one of the app's quests (`quest.app-quest-request@1` → `quest.app-quest@1`) |
+| `GET /api/v1/app-quests` | a developer app (`quest.app_quest.manage`) | the project's app quests, with how many people finished each |
+| `DELETE /api/v1/app-quests/:slug` | a developer app (`quest.app_quest.manage`) | retire one: no longer counted or listed; its completions and badges stay |
 
 Public reads need no token. `/me/quests` takes a person's Network token as a Bearer or this site's session, and
 answers only that person's rows. Errors are RFC 9457 `application/problem+json` with a stable `code`. Requests are
@@ -134,6 +137,15 @@ OpenVibe.Events delivers an event when a site really does something. Quest count
 | `run.job.succeeded` | OpenVibe.Run | `payload.requester` when it is a user (an app's or a service's job is nobody's) |
 | `inventory.item.equipped` | OpenVibe.Inventory | `payload.owner` |
 | `bot.robot.online` | OpenVibe.Bot | `payload.owner`, the robot's owner (Bot names it since contracts 0.192.0) |
+
+**App quests** (contracts 0.193.0, [server/quests/app-quests.js](server/quests/app-quests.js)): a developer app defines
+quests on its own project's events with an app token (audience `openvibe.quest`, capability `quest.app_quest.manage`).
+A step may count only `app.<project_key>.<name>` events of that project, and the person is the event's actor (an app
+publishing `on_behalf_of` a user; an app acting as itself is nobody). Only production counts: Events never hands
+sandbox events to a first-party consumer, so a sandbox app's quests are its own and never listed. Quest subscribes to
+`app.<project_key>.*` when a project's first production quest goes active (and at boot). The reward is a badge named
+for the app, never OpenCoins; at most 20 active quests a project; `/apps/quests/<id>` is the public page and the home
+page lists them under "Made by apps".
 
 A step can also name payload values to `match` (`{ task: 'emote' }`): the "Set up your channel" series is one
 quest per Live setup task, plus one that counts all 18 tasks. The home page shows a series as one card; its page is

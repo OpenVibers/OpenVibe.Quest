@@ -20,8 +20,8 @@ const READ = 'quest.api.read';
     const rosa = t.network.addUser('rosa');
     const sam = t.network.addUser('sam');
 
-    await check('BUDGETS starts empty: the product declares its own expensive routes', () => {
-        assert.deepStrictEqual(BUDGETS, {});
+    await check('BUDGETS: the product declares its own expensive routes (an app defining its quests)', () => {
+        assert.deepStrictEqual(BUDGETS, { 'quest.app_quest.write': { minute: 20, hour: 200 } });
     });
 
     await check('a read: 3 a minute per address, then 429 rate_limited with Retry-After; another address passes', async () => {

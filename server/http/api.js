@@ -38,6 +38,7 @@ const questWire = (q) => ({
 
 function createApi(ctx) {
     const { config, s, principal, limits, coins } = ctx;
+    if (ctx.appQuests) setAppBadgeNames(ctx.appQuests.badgeName);
     const r = asyncRouter();
     const problem = (req, res, status, code, detail) => contracts.http.sendProblem(res, status, code, { detail, ctx: req.ov });
     /** Whether OpenCoins are live, and the caps — the same answer the pages give. */
@@ -63,6 +64,31 @@ function createApi(ctx) {
         const quest = catalog.byId(req.params.id);
         if (!quest) return problem(req, res, 404, 'quest.not_found', 'No such quest. GET /api/v1/quests lists them.');
         return res.json(questWire(quest));
+    });
+
+    // ── App quests (developer apps, contracts 0.193.0: quest.app_quest.manage) ──
+    // Only an app token with a project: a person, an agent or a service never defines an app's quests.
+    const appOnly = (req, res, next) => {
+        const p = req.principal;
+        if (p.kind !== 'app' || !String(p.requester || '').startsWith('app:') || !p.project) {
+            return problem(req, res, p.kind === 'anonymous' ? 401 : 403, 'quest.app_only', 'App quests are defined by a developer app: send its app token (a project, audience openvibe.quest, quest.app_quest.manage).');
+        }
+        return next();
+    };
+    const manage = principal.requireCapability('quest.app_quest.manage');
+    r.get('/app-quests', limits.reads('quest.app_quest.read'), appOnly, manage, async (req, res) => {
+        const rows = await ctx.appQuests.listForProject(req.principal.project);
+        res.json({ project_id: req.principal.project, max: ctx.appQuests.MAX_PER_PROJECT, quests: await Promise.all(rows.map((row) => ctx.appQuests.wire(row))) });
+    });
+    r.put('/app-quests/:slug', limits.budget('quest.app_quest.write'), appOnly, manage, async (req, res) => {
+        const out = await ctx.appQuests.put(req.principal, req.params.slug, req.body);
+        if (out.code) return problem(req, res, out.status, out.code, out.detail);
+        res.status(out.status).json(await ctx.appQuests.wire(out.row));
+    });
+    r.delete('/app-quests/:slug', limits.budget('quest.app_quest.write'), appOnly, manage, async (req, res) => {
+        const row = await ctx.appQuests.retire(req.principal.project, req.params.slug);
+        if (!row) return problem(req, res, 404, 'quest.not_found', 'This project has no app quest with that slug.');
+        res.json(await ctx.appQuests.wire(row));
     });
 
     // ── Your own quest log (a person) ────────────────────────
@@ -120,9 +146,12 @@ const completionWire = (c) => ({
 });
 
 /** A badge as anyone may see it: the id, its catalog name, and nothing about the person. */
+let appBadgeName = () => null;
+/** server/app.js points this at the app quests' badge names. */
+const setAppBadgeNames = (fn) => { appBadgeName = typeof fn === 'function' ? fn : () => null; };
 const badgeWire = (badgeId) => {
     const badge = catalog.badgeById(badgeId);
-    return { id: badgeId, name: badge ? badge.name : badgeId };
+    return { id: badgeId, name: badge ? badge.name : (appBadgeName(badgeId) || badgeId) };
 };
 
-module.exports = { createApi, questWire, completionWire, badgeWire, SUBJECT_RE };
+module.exports = { createApi, questWire, completionWire, badgeWire, setAppBadgeNames, SUBJECT_RE };

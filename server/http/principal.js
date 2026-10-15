@@ -20,11 +20,9 @@ const { serviceAuth, capabilities, http, ids } = require('openvibe-contracts');
 
 const PRINCIPAL_SUB = /^(svc|app|mod|agent):/;
 const PROJECT_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
-// Empty on purpose: every route OpenVibe.Quest serves is either public (the catalog, a quest, a person's public
-// badges) or a person reading their own log, and neither needs a capability — a person acting for themself never
-// does. openvibe-contracts has no quest.* capability manifest yet; a route that needed one would add it there
-// first and then name it here, so a route can never be guarded by a capability the service does not declare.
-const CAPABILITIES = [];
+// Every other route is public or a person reading their own log (no capability). App quests are the one exception:
+// a developer app (an app token with a project) defines its own quests with quest.app_quest.manage (contracts 0.193.0).
+const CAPABILITIES = ['quest.app_quest.manage'];
 
 function decodePayload(token) {
     const parts = String(token || '').split('.');
@@ -54,7 +52,9 @@ function createPrincipal({ config, keys }) {
             if (payload && typeof payload.sub === 'string' && PRINCIPAL_SUB.test(payload.sub)) {
                 const publicKey = await keys.pemForToken(token);
                 if (!publicKey) return { error: [503, 'identity.unavailable', 'the Network signing key is not loaded yet'] };
-                const r = serviceAuth.verifyServiceToken(token, { publicKey, issuer: config.networkIssuer, audience: config.audience });
+                // Sandbox app tokens are accepted (ADR-014 opt-in): only the app-quest routes take app tokens, and a sandbox
+                // app's quests are its own, never listed or counted (server/quests/app-quests.js).
+                const r = serviceAuth.verifyServiceToken(token, { publicKey, issuer: config.networkIssuer, audience: config.audience, acceptSandbox: true });
                 if (!r.ok) return { error: [401, r.code || 'token.invalid', r.reason || 'the token does not verify'] };
                 const project = typeof r.claims.project_id === 'string' && PROJECT_RE.test(r.claims.project_id) ? r.claims.project_id : null;
                 return { principal: { kind: 'app', requester: requesterOfSub(r.claims.sub), project, claims: r.claims } };

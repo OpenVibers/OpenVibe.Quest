@@ -78,7 +78,7 @@ ${raw(showcase.features({
             }))}
 <section class="sc-sec" id="the-quests" aria-labelledby="the-quests-h"><h2 id="the-quests-h">The quests</h2>
 <p class="sc-lede">Every quest below counts something a person really did on an OpenVibe site. Grouped by the site whose events it counts.</p>
-${quests.list(catalog.grouped(), coinsUi)}
+${quests.list(catalog.grouped({ fold: true }), coinsUi)}
 ${quests.coinsNote(coinsUi)}</section>
 <section class="sc-sec" id="how-progress-works" aria-labelledby="how-progress-works-h"><h2 id="how-progress-works-h">How progress works</h2>
 <p class="sc-lede">Quest does not watch you and does not ask the sites who you are. The network's event backbone,
@@ -122,9 +122,9 @@ ${raw(showcase.cta({
             crumbs: [{ label: 'Quests', href: '/' }, { label: quest.title }],
             body: html`<h1>${quest.title}</h1>
 <p class="lede">${quest.why}</p>
-<p class="muted">On <a href="https://${quest.site}">${siteName(quest.site)}</a>.</p>
+<p class="muted">On <a href="https://${quest.site}">${siteName(quest.site)}</a>${quest.series && catalog.SERIES[quest.series] ? html`, in <a href="/series/${quest.series}">${catalog.SERIES[quest.series].title}</a>` : ''}.</p>
 <h2>What it counts</h2>
-<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${state && (state.seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${Object.entries(step.match || {}).map(([k, v]) => html` with <code>${k}</code> <code>${String(v)}</code>`)}${state && (state.seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
 <h2>The reward</h2>
 <p>${quests.reward(quest, coinsUi)}</p>
 <p class="muted">${state && state.holders ? html`${state.holders} ${state.holders === 1 ? 'person has' : 'people have'} this badge.` : html`A badge is awarded once and kept.`}</p>
@@ -132,6 +132,31 @@ ${state && state.completion ? html`<div class="notice" role="status">You complet
 ${quests.coinsNote(coinsUi)}
 <p><a href="/">All quests</a></p>`,
         }));
+    });
+
+    // ── A series: its quests, and which of them the person has done ──
+    r.get('/series/:id', async (req, res) => {
+        const series = catalog.seriesById(req.params.id);
+        if (!series) return page(req, res, {
+            title: 'No such series',
+            body: html`<h1>No such series</h1><p>There is no quest series at this address. <a href="/">The quest list</a> has every quest.</p>`,
+        }, 404);
+        const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
+        const done = new Set(mine ? (await store.completionsFor(s.db, req.viewer.subject)).map((c) => c.quest_id) : []);
+        const finished = series.quests.filter((q) => done.has(q.id)).length;
+        return page(req, res, {
+            index: true, cache: mine ? null : PUBLIC_CACHE,
+            title: series.title,
+            description: series.why,
+            crumbs: [{ label: 'Quests', href: '/' }, { label: series.title }],
+            body: html`<h1>${series.title}</h1>
+<p class="lede">${series.why}</p>
+<p class="muted">On <a href="https://${series.site}">${siteName(series.site)}</a>. ${series.how} <a href="${series.href}">${series.hrefLabel}</a>.</p>
+${mine ? quests.progress('Your progress', finished, series.quests.length) : ''}
+<ul class="quest-list">${series.quests.map((q) => quests.card(q, { ...coinsUi, earned: done.has(q.id) }))}</ul>
+${quests.coinsNote(coinsUi)}
+<p><a href="/">All quests</a>${mine ? html` · <a href="/me">Your quest log</a>` : ''}</p>`,
+        });
     });
 
     // ── Your quest log ───────────────────────────────────────

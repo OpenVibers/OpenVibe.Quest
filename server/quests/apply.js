@@ -11,7 +11,7 @@
  * choice; otherwise it is ignored. An event whose subject is missing, a guest (gst_…), or a service, app or mod
  * principal is ignored, outcome 'ignored:subject', and nothing is written.
  *
- * Then, for every quest that counts the event type:
+ * Then, for every quest with a step that counts the event (its type, and the payload values a step's `match` names):
  *   - one more on that step's count (capped at the step's target; a completed quest is left frozen);
  *   - if every step is at its target, a completion — once per person, by the unique constraint — and its badge.
  *
@@ -53,6 +53,8 @@ function personOf(event) {
             return refUser(p.player && p.player.subject);
         case 'tools.job.created':         // payload.owner (a user, or a service, app or mod principal)
             return refUser(p.owner);
+        case 'live.setup.task_completed': // payload.user (the streamer; the envelope subject and actor are the same person)
+            return refUser(p.user);
         default:
             return null;
     }
@@ -67,7 +69,7 @@ function personOf(event) {
 async function apply(db, event, { at, newId }) {
     const subject = personOf(event);
     if (!subject) return { subject: null, outcome: 'ignored:subject', completed: [] };
-    const quests = catalog.withEvent(event.event_type);
+    const quests = catalog.forEvent(event);
     if (!quests.length) return { subject, outcome: 'ignored:type', completed: [] };
 
     const completed = [];
@@ -77,7 +79,7 @@ async function apply(db, event, { at, newId }) {
 
         const progress = new Map((await store.progressOf(db, subject, quest.id)).map((r) => [Number(r.step), Number(r.count)]));
         for (const [i, step] of quest.steps.entries()) {
-            if (step.event_type !== event.event_type) continue;
+            if (!catalog.stepCounts(step, event)) continue;
             progress.set(i, await store.bumpProgress(db, { subject, questId: quest.id, step: i, target: step.count, at }));
         }
         if (!quest.steps.every((s, i) => (progress.get(i) || 0) >= s.count)) continue;

@@ -23,6 +23,7 @@ const PAGE_TEXT = {
     '/': ['OpenVibe.Quest home', 'OpenVibe.Quest: Quests across the whole network. The quests, grouped by the site whose events each one counts.'],
     '/how-it-works': ['How quests work', 'What OpenVibe.Quest counts, what it stores, and what its rewards are — badges and OpenCoins, never money and never Vibes.'],
     '/updates': ['What shipped on OpenVibe.Quest', 'This site\'s update log, from the network changelog feed.'],
+    ...Object.fromEntries(Object.values(catalog.SERIES).map((x) => [`/series/${x.id}`, [x.title, `${x.why} On ${(catalog.SITES[x.site] || {}).name || x.site}.`]])),
     ...Object.fromEntries(catalog.all().map((q) => [`/quests/${q.id}`, [q.title, `${q.why} On ${(catalog.SITES[q.site] || {}).name || q.site}. Reward: the ${q.reward.badge.name} badge${q.reward.item ? `, the ${q.reward.item.name} (${q.reward.item.kind.toLowerCase()}) for your inventory` : ''}${q.reward.coins > 0 ? ` and ${q.reward.coins} OpenCoins` : ''}.`]])),
 };
 
@@ -46,6 +47,7 @@ function homeJsonLd(config) {
 const publicPages = () => [
     { path: '/', changefreq: 'weekly', priority: 1.0 },
     { path: '/how-it-works', changefreq: 'monthly', priority: 0.6 },
+    ...Object.values(catalog.SERIES).map((x) => ({ path: `/series/${x.id}`, changefreq: 'monthly', priority: 0.7 })),
     ...catalog.all().map((q) => ({ path: `/quests/${q.id}`, changefreq: 'monthly', priority: 0.7 })),
     { path: '/updates', changefreq: 'daily', priority: 0.5 },
 ];

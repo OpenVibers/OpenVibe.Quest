@@ -38,11 +38,11 @@ function medal(quest, { earned = false } = {}) {
 }
 
 /** One quest in a list: the badge it pays, what it is, why, the steps as a checklist, and the reward. */
-function card(quest, { coinsEnabled = false } = {}) {
+function card(quest, { coinsEnabled = false, earned = false } = {}) {
     return html`<li class="quest">
-    ${medal(quest)}
+    ${medal(quest, { earned })}
     <div class="quest-main">
-    <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a>
+    <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a>${earned ? html` <span class="done">done</span>` : ''}
     <p class="quest-why">${quest.why}</p>
     <ul class="quest-steps">${quest.steps.map((s) => html`<li>${s.label}${s.count > 1 ? html` <span class="step-count">×${s.count}</span>` : ''}</li>`)}</ul>
     <p class="quest-reward">${reward(quest, { coinsEnabled })}</p>
@@ -50,13 +50,28 @@ function card(quest, { coinsEnabled = false } = {}) {
 </li>`;
 }
 
-/** The catalog grouped by the site whose events each quest counts. */
+/** A series in a list (the home page): one card for all its quests, opening the series' page. */
+function seriesCard(series, { coinsEnabled = false } = {}) {
+    const coins = series.quests.reduce((n, q) => n + q.reward.coins, 0);
+    const n = series.quests.length;
+    return html`<li class="quest quest-series">
+    <span class="medal" style="--h:${hueOf(series.id)}" aria-hidden="true">${n}</span>
+    <div class="quest-main">
+    <a class="quest-title" href="/series/${series.id}">${series.title}</a>
+    <p class="quest-why">${series.why}</p>
+    <p class="quest-reward"><span class="reward"><span class="reward-badge"><strong>${n}</strong> quests, a badge each</span>${coins > 0 ? (coinsEnabled ? html`<span class="reward-coins"><strong>${coins}</strong> OpenCoins in all</span>` : html`<span class="reward-coins soon">OpenCoins rewards start soon</span>`) : ''}</span></p>
+    </div>
+</li>`;
+}
+
+/** The catalog grouped by the site whose events each quest counts (a folded catalog shows each series as one card). */
 function list(groups = catalog.grouped(), { coinsEnabled = false } = {}) {
     // The heading id is the domain with its dots replaced: an id with a dot is legal but awkward to target.
     const anchor = (site) => `site-${String(site).replace(/[^a-z0-9-]/gi, '-')}`;
+    const count = (g) => g.quests.length + (g.series || []).reduce((n, x) => n + x.quests.length, 0);
     return html`${groups.map((g) => html`<section class="site-group" aria-labelledby="${anchor(g.site)}">
-    <h3 id="${anchor(g.site)}"><a href="https://${g.site}">${String(g.name).replace(/^OpenVibe\./, '')}</a><span class="site-count">${g.quests.length} quest${g.quests.length === 1 ? '' : 's'}</span>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
-    <ul class="quest-list">${g.quests.map((q) => card(q, { coinsEnabled }))}</ul>
+    <h3 id="${anchor(g.site)}"><a href="https://${g.site}">${String(g.name).replace(/^OpenVibe\./, '')}</a><span class="site-count">${count(g)} quest${count(g) === 1 ? '' : 's'}</span>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
+    <ul class="quest-list">${g.quests.map((q) => card(q, { coinsEnabled }))}${(g.series || []).map((x) => seriesCard(x, { coinsEnabled }))}</ul>
 </section>`)}`;
 }
 
@@ -79,4 +94,4 @@ ${dailyCap} OpenCoins per person per day and ${globalDailyCap} for everyone toge
 never money — and never Vibes.</p>`;
 }
 
-module.exports = { medal, hueOf, reward, card, list, progress, coinsNote };
+module.exports = { medal, hueOf, reward, card, seriesCard, list, progress, coinsNote };

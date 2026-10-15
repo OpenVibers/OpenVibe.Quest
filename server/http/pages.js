@@ -62,6 +62,7 @@ function createPageRoutes(ctx) {
         });
         page(req, res, {
             index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,
+            description: 'One quest log across the OpenVibe sites: badges for what you really do on Live, Chat, Community, Games and more, built on real activity.',
             jsonLd: homeJsonLd(config),
             styles: [showcase.STYLESHEET],
             body: html`${raw(hero)}
@@ -247,6 +248,7 @@ when their Network account is deleted or merged. Until it does, progress rows st
     r.get('/updates', (req, res) => page(req, res, {
         index: true, cache: PUBLIC_CACHE,
         title: `What shipped on ${SITE_NAME}`,
+        description: 'Every change deployed to OpenVibe.Quest, newest first, from the OpenVibe network\'s shared update log.',
         body: raw(frame.updatesBody({ service: 'quest', siteName: SITE_NAME }) + `<script src="${ovServe.url('shipped.js')}" defer></script>`),
     }));
 

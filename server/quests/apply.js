@@ -64,6 +64,8 @@ function personOf(event) {
         case 'inventory.item.equipped':   // payload.owner (usr_…)
         case 'bot.robot.online':          // payload.owner (usr_…, contracts 0.192.0; absent from older events)
             return isUser(p.owner) ? p.owner : null;
+        case 'games.world.published':     // payload.owner (identity.subject-ref@1, contracts 0.194.0)
+            return refUser(p.owner);
         default:
             // An app's own event (app quests, server/quests/app-quests.js): the actor, when the app published it
             // on_behalf_of a person; an app acting as itself is nobody.

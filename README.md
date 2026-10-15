@@ -128,8 +128,11 @@ OpenVibe.Events delivers an event when a site really does something. Quest count
 | `wiki.revision.created` | OpenVibe.Wiki | the author (a service edit is ignored) |
 | `games.player.joined` | OpenVibe.Games | the player's account subject (a guest is ignored) |
 | `tools.job.created` | OpenVibe.Tools | the owner (an anonymous session is ignored) |
+| `live.setup.task_completed` | OpenVibe.Live | `payload.user`, the streamer who finished a task on Live's go-live setup list |
 
-A quest completes when every step reaches its count. The completion, its badge and (when OpenCoins are on) its
+A step can also name payload values to `match` (`{ task: 'emote' }`): the "Set up your channel" series is one
+quest per Live setup task, plus one that counts all 18 tasks. The home page shows a series as one card; its page is
+`/series/<id>`. A quest completes when every step reaches its count. The completion, its badge and (when OpenCoins are on) its
 coins are recorded once; a redelivery of the same event, or the whole request again, changes nothing.
 
 ## Data sources and their terms
@@ -137,7 +140,7 @@ coins are recorded once; a redelivery of the same event, or the whole request ag
 | Source | Used for | Terms as applied |
 |---|---|---|
 | **OpenVibe.Events** (`openvibe.events`) | the domain events that move the log, `POST /internal/events`, loopback only | Signed deliveries only: `X-OpenVibe-Signature-V2` (HMAC-SHA256 over `<timestamp>.<raw body>`), a 300-second replay window, `requireV2`, the secret from `QUEST_EVENTS_SECRET` (32+ characters, comma-separated for rotation). A delivery that carries a forwarding header is refused: nginx never proxies this route. Once-only application is the `openvibe-sdk` inbox, in the same transaction as the writes |
-| **openvibe-contracts** v0.115.0 | the shape of every event and of the two Network calls | Every field read is the one the schema at `contracts/events/payloads/<type>.v1.json` defines; no field is inferred and nothing about a person is taken from a name or from the request |
+| **openvibe-contracts** v0.190.0 | the shape of every event and of the two Network calls | Every field read is the one the schema at `contracts/events/payloads/<type>.v1.json` defines; no field is inferred and nothing about a person is taken from a name or from the request |
 | **OpenVibe.Network** (`openvibe.network`) | resolving a subject to its wallet id, and crediting OpenCoins | `GET /internal/identity/resolve` (capability `identity.subject.resolve`, `identity.resolve-result@1`) gives `network_user_id`; `POST /internal/coins/credit` (capability `network.coins.credit`, body `network.coins-change-request@1`, answer `network.coins-balance-result@1`) credits, with `app_id: quest` — a service token may only name its own app id. Both use this service's own client credentials over the internal URL; no token is logged |
 | **OpenVibe sites** (Live, Community, Space, Chat, Wiki, Games, Tools, Network) | nothing is fetched from them | Quest makes no outbound request to any site, and no URL from a request ever decides one: the only host it calls is `OV_NETWORK_INTERNAL_URL` |
 

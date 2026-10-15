@@ -38,6 +38,10 @@ const chatMessage = (user_subject) => envelope('chat.room.message.created', {
     message_id: 12, room: { id: 'room_1', slug: 'general', name: 'General' }, text: 'hello', created_at: iso(),
     user_subject, username: 'liv', display_name: 'Liv',
 }, { source: 'chat', actor: user_subject ? { type: 'user', id: user_subject } : { type: 'service', id: 'chat' } });
+/** live.setup.task_completed (Contracts 0.190.0): one task of Live's go-live setup list, done for the first time. */
+const setupTask = (subject, task, done = 1) => envelope('live.setup.task_completed', {
+    task, user: { type: 'user', id: subject }, title: `Task ${task}`, group: 'Stream', completed_at: iso(), done, total: 18,
+}, { actor: { type: 'user', id: subject }, subject: { type: 'user', id: subject } });
 const followCreated = (follower) => envelope('network.follow.created', {
     follower, target_type: 'channel', target_id: 'usr_' + '0'.repeat(26), revision: 1,
 }, { source: 'network', actor: { type: 'user', id: follower } });
@@ -138,6 +142,37 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.strictEqual((await completions(t, u.subject)).length, 2, 'no third completion');
             assert.strictEqual((await badges(t, u.subject)).length, 2, 'no second badge');
             assert.deepStrictEqual(await progressOf(t, u.subject, 'stream-three-times'), [3], 'progress is frozen at the target');
+        });
+
+        await check('a Live setup task completes its own quest (step match) and counts toward finishing the whole setup', async () => {
+            const SETUP_TASKS = ['slot', 'method', 'restream', 'golive', 'profile', 'offline', 'emote', 'sound', 'goal', 'powerchat', 'panels', 'share', 'mods', 'requests', 'moderation', 'robot', 'aibot', 'paste'];
+            const u = t.network.addUser('setter-upper');
+            const emote = await deliver(t, setupTask(u.subject, 'emote'));
+            assert.strictEqual(emote.json().outcome, 'completed');
+            let done = await completions(t, u.subject);
+            assert.deepStrictEqual(done.map((c) => c.quest_id), ['live-setup-emote'], 'only the emote quest, not the other sixteen');
+            assert.deepStrictEqual(await progressOf(t, u.subject, 'live-setup-sound'), [], 'a step whose match differs is not counted');
+            assert.deepStrictEqual(await progressOf(t, u.subject, 'live-setup-complete'), [1], 'the whole-setup quest counts every task');
+            // "Go live for the first time" has no quest of its own (the go-live quest pays it) but counts toward the whole setup.
+            for (const task of SETUP_TASKS.filter((x) => x !== 'emote')) await deliver(t, setupTask(u.subject, task));
+            done = await completions(t, u.subject);
+            assert.strictEqual(done.length, 18, '17 task quests and the whole setup');
+            assert.ok(done.some((c) => c.quest_id === 'live-setup-complete'));
+            assert.ok((await badges(t, u.subject)).some((b) => b.badge_id === 'live-setup-complete'));
+            // A setup event without a person in the payload credits nobody, even with a user actor.
+            const nobody = envelope('live.setup.task_completed', { task: 'slot', user: null }, { actor: { type: 'user', id: u.subject } });
+            assert.strictEqual((await deliver(t, nobody)).json().outcome, 'ignored:subject');
+            // The series page shows a signed-in streamer what they have done; the home page folds the series into one card.
+            const page = await t.get('/series/live-setup', { as: u });
+            assert.strictEqual(page.status, 200);
+            assert.match(page.text, /<progress max="18" value="18">/);
+            assert.ok(page.text.includes('href="/quests/live-setup-emote"'));
+            const home = await t.get('/');
+            assert.ok(home.text.includes('href="/series/live-setup"'), 'the home page links the series');
+            assert.ok(!home.text.includes('href="/quests/live-setup-emote"'), 'and does not list its quests one by one');
+            assert.strictEqual((await t.get('/series/nope')).status, 404);
+            const quest = await t.get('/quests/live-setup-emote');
+            assert.ok(quest.text.includes('<code>task</code> <code>emote</code>'), 'the quest page says which task it counts');
         });
 
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {

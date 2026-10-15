@@ -75,6 +75,8 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .reward-item { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent, #3b82f6) 45%, transparent); color: var(--text-primary, #e6edf7); background: color-mix(in srgb, var(--accent, #3b82f6) 10%, transparent); }
 .reward-item small { color: var(--text-secondary, #96a7c2); }   /* muted failed AA on the tinted chip */
 .reward-coins.soon { color: var(--text-muted, #7386a3); border-style: dashed; border-color: var(--border-light, #2c3d5c); }
+.quest-series { border-style: dashed; }
+.quest-series .medal { font-size: 1.15rem; }
 @media (prefers-reduced-motion: reduce) { .quest { transition: none; } }
 .steps { margin: .4rem 0; }
 .done { color: var(--success, #22c55e); font-weight: 700; }

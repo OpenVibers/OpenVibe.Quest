@@ -15,7 +15,9 @@
  *   site        the domain whose events it counts (grouping and provenance)
  *   title       one line, a thing a person would say
  *   why         one line on why it is worth doing (never a promise the sites do not keep)
- *   steps       [{ event_type, count, label }] — every step must reach its count
+ *   steps       [{ event_type, count, label, match? }] — every step must reach its count; `match` ({ field: value })
+ *               counts only the events whose payload has those values (live.setup.task_completed: { task: 'emote' })
+ *   series      optional: the SERIES it belongs to; the home page shows a series as one card, its page lists them
  *   reward      { badge: { id, name }, coins, item? } — a text badge label (no emoji), OpenCoins (loyalty, not money)
  *               and, for some, an item for the person's OpenVibe.Inventory: { issuer, alias, name, kind, emoji }, one of
  *               Live's items that Live lets Quest give (ADR-054 §3 grantors; server/quests/items.js grants it)
@@ -35,6 +37,22 @@ const SITES = Object.freeze({
     'openvibe.games': { name: 'OpenVibe.Games', what: 'the games platform' },
     'openvibe.tools': { name: 'OpenVibe.Tools', what: 'the tools' },
     'openvibe.space': { name: 'OpenVibe.Space', what: 'forums in a Space' },
+});
+
+/**
+ * Series: a set of quests one site offers together. The home page shows a series as one card that opens its page
+ * (/series/<id>), so a long set does not bury the rest of the catalog; the API and the quest log list every quest.
+ */
+const SERIES = Object.freeze({
+    'live-setup': {
+        id: 'live-setup',
+        site: 'openvibe.live',
+        title: 'Set up your channel',
+        why: 'OpenVibe.Live\'s go-live setup list: a quest for each task, and one for finishing it all.',
+        how: 'Live tells Quest about a task the first time it sees it done: the next time you open OpenVibe.Live\'s home page or your setup list. A task done before this series existed counts too.',
+        href: 'https://openvibe.live/',
+        hrefLabel: 'Your setup list on OpenVibe.Live',
+    },
 });
 
 const QUESTS = Object.freeze([
@@ -149,6 +167,187 @@ const QUESTS = Object.freeze([
         reward: { badge: { id: 'settled-in', name: 'Settled In' }, coins: 20 },
         repeatable: false,
     },
+    {
+        id: 'live-setup-slot',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Create your stream slot',
+        why: 'Your show gets its own key, settings, VODs and restreams.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'slot' }, count: 1, label: 'Create your stream slot on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-slot-holder', name: 'Slot Holder' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-method',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Choose how you stream',
+        why: 'From the browser, from OBS over RTMP, or from OBS over WHIP: picking one is half the setup.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'method' }, count: 1, label: 'Choose how you stream on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-method-picked', name: 'Method Picked' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-restream',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Mirror to another platform',
+        why: 'One stream on Twitch, YouTube, Kick, RobotStreamer or any RTMP server at the same time.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'restream' }, count: 1, label: 'Mirror to another platform on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-restreamer', name: 'Restreamer' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-profile',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Add an avatar and a bio',
+        why: 'The first thing people see on your channel and next to your name in chat.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'profile' }, count: 1, label: 'Add an avatar and a bio on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-profile-ready', name: 'Profile Ready' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-offline',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Make an offline screen',
+        why: 'What visitors see while you are not live: an image, a video or your own page.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'offline' }, count: 1, label: 'Make an offline screen on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-offline-screen', name: 'Offline Screen' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-emote',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Upload a custom emote',
+        why: 'Your chat, your inside jokes. Animated ones work too.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'emote' }, count: 1, label: 'Upload a custom emote on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-emote-maker', name: 'Emote Maker' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-sound',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Add a sound command',
+        why: 'Viewers type !boom and your stream plays it.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'sound' }, count: 1, label: 'Add a sound command on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-sound-board', name: 'Sound Board' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-goal',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Set a donation goal',
+        why: 'A visible target turns tips into a team effort.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'goal' }, count: 1, label: 'Set a donation goal on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-goal-setter', name: 'Goal Setter' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-powerchat',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Connect PowerChat',
+        why: 'Card and crypto tips, with alerts on your stream.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'powerchat' }, count: 1, label: 'Connect PowerChat on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-tip-jar', name: 'Tip Jar' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-panels',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Fill in your About panels',
+        why: 'Links, schedule and rules: what people read under the player.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'panels' }, count: 1, label: 'Fill in your About panels on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-panel-writer', name: 'Panel Writer' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-share',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Get your first follower',
+        why: 'Share your channel link: a follower hears about it every time you go live.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'share' }, count: 1, label: 'Get your first follower on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-followed', name: 'Followed' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-mods',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Add a moderator',
+        why: 'Someone you trust watching chat while you stream.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'mods' }, count: 1, label: 'Add a moderator on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-mod-squad', name: 'Mod Squad' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-requests',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Open media requests',
+        why: 'Let viewers queue clips and tracks to play on your stream.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'requests' }, count: 1, label: 'Open media requests on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-request-line', name: 'Request Line' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-moderation',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Set your chat rules',
+        why: 'Slow mode, followers-only and emote-only, tuned the way you want them.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'moderation' }, count: 1, label: 'Set your chat rules on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-rule-maker', name: 'Rule Maker' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-robot',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Connect a robot',
+        why: 'Bind a robot from OpenVibe.Bot to your channel: its panel shows under your stream and chat can drive it.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'robot' }, count: 1, label: 'Connect a robot on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-robot-wrangler', name: 'Robot Wrangler' }, coins: 10 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-aibot',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Add an AI chat regular',
+        why: 'Keeps an empty chat warm and answers the usual questions.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'aibot' }, count: 1, label: 'Add an AI chat regular on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-bot-host', name: 'Bot Host' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-paste',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Publish a paste',
+        why: 'Code, configs or notes from your stream, each on a page of its own.',
+        steps: [{ event_type: 'live.setup.task_completed', match: { task: 'paste' }, count: 1, label: 'Publish a paste on OpenVibe.Live' }],
+        reward: { badge: { id: 'live-setup-paste-author', name: 'Paste Author' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'live-setup-complete',
+        site: 'openvibe.live',
+        series: 'live-setup',
+        title: 'Finish the whole go-live setup',
+        why: 'Every task on the list done: the channel is ready for whoever walks in.',
+        // Live sends each task once per person, so 18 of them is every task on the list.
+        steps: [{ event_type: 'live.setup.task_completed', count: 18, label: 'Finish every task on the setup list' }],
+        reward: { badge: { id: 'live-setup-complete', name: 'Fully Set Up' }, coins: 50 },
+        repeatable: false,
+    },
 ]);
 
 const BY_ID = new Map(QUESTS.map((q) => [q.id, q]));
@@ -173,6 +372,7 @@ const EVENTS = Object.freeze([
     { event_type: 'wiki.revision.created', site: 'openvibe.wiki', what: 'A wiki page got a new immutable revision; the payload names its author (a service edit is ignored).' },
     { event_type: 'games.player.joined', site: 'openvibe.games', what: 'A character entered a world; the payload names its account\'s user subject (a guest is ignored).' },
     { event_type: 'tools.job.created', site: 'openvibe.tools', what: 'A tool job was accepted and queued; the payload names its owner (an anonymous session is ignored).' },
+    { event_type: 'live.setup.task_completed', site: 'openvibe.live', what: 'A streamer finished a task on Live\'s go-live setup list for the first time; the payload names the streamer and the task, never what they made.' },
 ]);
 
 // The events Quest actually counts: the consumer subscribes to exactly these, and a quest may not count an event
@@ -182,6 +382,8 @@ const EVENT_TYPES = Object.freeze(COUNTED.slice().sort());
 {
     const missing = QUESTS.flatMap((q) => q.steps.map((s) => s.event_type)).filter((t) => !COUNTED.includes(t));
     if (missing.length) throw new Error(`quests/catalog.js: a quest counts an event that is not in EVENTS: ${[...new Set(missing)].join(', ')}`);
+    const orphans = QUESTS.filter((q) => q.series && !(SERIES[q.series] && SERIES[q.series].site === q.site)).map((q) => q.id);
+    if (orphans.length) throw new Error(`quests/catalog.js: a quest names a series that is not in SERIES (or is on another site): ${orphans.join(', ')}`);
 }
 
 /** The sites, in the order they first appear in the catalog (so the pages read the same every time). */
@@ -191,17 +393,36 @@ const byId = (id) => BY_ID.get(String(id)) || null;
 const all = () => QUESTS;
 /** The quests that count this event type (a step may be shared: 'settle in' counts two sites). */
 const withEvent = (eventType) => QUESTS.filter((q) => q.steps.some((s) => s.event_type === eventType));
-/** The catalog grouped by site, for the home page and the API: [{ site, name, what, quests }]. */
-const grouped = () => SITE_ORDER.map((site) => ({
-    site,
-    name: (SITES[site] || {}).name || site,
-    what: (SITES[site] || {}).what || '',
-    quests: QUESTS.filter((q) => q.site === site),
-}));
+/** Whether a step counts this event: its type, and every value its `match` names in the payload. */
+const stepCounts = (step, event) => step.event_type === event.event_type
+    && Object.entries(step.match || {}).every(([k, v]) => ((event.payload || {})[k]) === v);
+/** The quests with a step that counts this very event (live.setup.task_completed for 'emote' moves two, not eighteen). */
+const forEvent = (event) => QUESTS.filter((q) => q.steps.some((s) => stepCounts(s, event)));
+/**
+ * The catalog grouped by site, for the home page and the API: [{ site, name, what, quests, series }]. With
+ * { fold: true } (the home page) a series' quests leave `quests` and `series` lists the series instead, each with its
+ * quests; otherwise `quests` has every quest and `series` is empty.
+ */
+const grouped = ({ fold = false } = {}) => SITE_ORDER.map((site) => {
+    const here = QUESTS.filter((q) => q.site === site);
+    const series = Object.values(SERIES).filter((x) => x.site === site)
+        .map((x) => ({ ...x, quests: here.filter((q) => q.series === x.id) })).filter((x) => x.quests.length);
+    return {
+        site,
+        name: (SITES[site] || {}).name || site,
+        what: (SITES[site] || {}).what || '',
+        quests: fold ? here.filter((q) => !q.series) : here,
+        series: fold ? series : [],
+    };
+});
+const seriesById = (id) => {
+    const x = Object.prototype.hasOwnProperty.call(SERIES, String(id)) ? SERIES[String(id)] : null;
+    return x ? { ...x, quests: QUESTS.filter((q) => q.series === x.id) } : null;
+};
 /** The badge for a quest, by badge id (the public badge endpoint stores only the id). */
 const badgeById = (badgeId) => {
     for (const q of QUESTS) if (q.reward.badge.id === badgeId) return { ...q.reward.badge, quest_id: q.id };
     return null;
 };
 
-module.exports = { QUESTS, SITES, EVENTS, EVENT_TYPES, SITE_ORDER, all, byId, withEvent, grouped, badgeById };
+module.exports = { QUESTS, SITES, SERIES, EVENTS, EVENT_TYPES, SITE_ORDER, all, byId, withEvent, forEvent, stepCounts, grouped, seriesById, badgeById };

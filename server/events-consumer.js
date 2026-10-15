@@ -16,6 +16,7 @@
  *   wiki.revision.created       a wiki page got a new revision             ('improve a wiki page')
  *   games.player.joined         a character entered a world                ('play a game')
  *   tools.job.created           a tool job was accepted                    ('use a tool')
+ *   live.setup.task_completed   a streamer finished a go-live setup task   (the 'set up your channel' series)
  *
  * Which field carries the person, and what is ignored, is ./quests/apply.js.
  *

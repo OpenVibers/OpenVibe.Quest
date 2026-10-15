@@ -4,7 +4,7 @@
  * Quest's quest pages in OpenVibe.Search (openvibe-publishing/search-feed): one search.index-document@1 per quest
  * (/quests/<id>), sent as quest.index_document.upserted|deleted through this service's events outbox. The document is
  * what the page says: the quest's title, why it is worth doing, its steps, the site it happens on and the badge (and
- * item) it gives. Not the OpenCoins: they are off until the reward economics are decided (QUEST_COINS), and Search
+ * item) it gives. Not the OpenCoins: whether they move is a setting (QUEST_COINS) and their amounts may change, and Search
  * should never promise them.
  *
  * Quests are this service's own catalog (server/quests/catalog.js), so a sweep a minute after boot and every six

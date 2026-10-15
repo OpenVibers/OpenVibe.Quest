@@ -137,6 +137,7 @@ OpenVibe.Events delivers an event when a site really does something. Quest count
 | `run.job.succeeded` | OpenVibe.Run | `payload.requester` when it is a user (an app's or a service's job is nobody's) |
 | `inventory.item.equipped` | OpenVibe.Inventory | `payload.owner` |
 | `bot.robot.online` | OpenVibe.Bot | `payload.owner`, the robot's owner (Bot names it since contracts 0.192.0) |
+| `games.world.published` | OpenVibe.Games | `payload.owner`, who published a creator world for the first time (contracts 0.194.0) |
 
 **App quests** (contracts 0.193.0, [server/quests/app-quests.js](server/quests/app-quests.js)): a developer app defines
 quests on its own project's events with an app token (audience `openvibe.quest`, capability `quest.app_quest.manage`).

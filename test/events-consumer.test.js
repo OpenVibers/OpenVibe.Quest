@@ -198,6 +198,11 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok(!(await done()).includes('bring-a-robot-online'), 'an event that does not name the owner credits nobody');
             await deliver(t, envelope('bot.robot.online', { robot_id: 'rob_1', device_id: 'dev_1', owner: sam.subject }, { source: 'bot' }));
             assert.ok((await done()).includes('bring-a-robot-online'));
+            const world = { world: 'wk3j9x0a2bq', title: 'Moon base', url: 'https://openvibe.games/play?world=wk3j9x0a2bq', published_at: iso() };
+            await deliver(t, envelope('games.world.published', { ...world, owner: { type: 'service', id: 'games' } }, { source: 'games' }));
+            assert.ok(!(await done()).includes('publish-a-world'), 'a world a service published is nobody\'s');
+            await deliver(t, envelope('games.world.published', { ...world, owner: { type: 'user', id: sam.subject } }, { source: 'games' }));
+            assert.ok((await done()).includes('publish-a-world'));
         });
 
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {

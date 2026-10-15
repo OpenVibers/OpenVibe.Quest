@@ -215,6 +215,15 @@ const QUESTS = Object.freeze([
         repeatable: false,
     },
     {
+        id: 'publish-a-world',
+        site: 'openvibe.games',
+        title: 'Publish a creator world',
+        why: 'Build a world in the map editor and publish it: anyone can join it from their browser.',
+        steps: [{ event_type: 'games.world.published', count: 1, label: 'Publish one of your worlds at openvibe.games/worlds' }],
+        reward: { badge: { id: 'world-builder', name: 'World Builder' }, coins: 20 },
+        repeatable: false,
+    },
+    {
         id: 'settle-in',
         site: 'openvibe.network',
         title: 'Settle in across the network',
@@ -438,6 +447,7 @@ const EVENTS = Object.freeze([
     { event_type: 'run.job.succeeded', site: 'openvibe.run', what: 'A job finished on a node; the payload names its requester (a service or app requester is ignored).' },
     { event_type: 'inventory.item.equipped', site: 'inventory.openvibe.network', what: 'An item was equipped; the payload names its owner, never what else they own.' },
     { event_type: 'bot.robot.online', site: 'openvibe.bot', what: 'A device connected and serves a robot; the payload names the robot\'s owner (events from before Bot named it are ignored).' },
+    { event_type: 'games.world.published', site: 'openvibe.games', what: 'A player published one of their creator worlds for the first time; the payload names the owner.' },
 ]);
 
 // The events Quest actually counts: the consumer subscribes to exactly these, and a quest may not count an event

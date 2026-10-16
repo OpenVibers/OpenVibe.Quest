@@ -203,6 +203,11 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok(!(await done()).includes('publish-a-world'), 'a world a service published is nobody\'s');
             await deliver(t, envelope('games.world.published', { ...world, owner: { type: 'user', id: sam.subject } }, { source: 'games' }));
             assert.ok((await done()).includes('publish-a-world'));
+            const vid = { upload: 'vup_01M516F1WX5NN6C0EMW2V0G8Y9', title: 'Coast', url: 'https://openvibe.video/u/vup_01M516F1WX5NN6C0EMW2V0G8Y9', published_at: iso() };
+            await deliver(t, envelope('mediahub.video.published', { ...vid, owner: { type: 'user', id: sam.subject } }, { source: 'media-hub' }));
+            assert.ok((await done()).includes('publish-a-video'));
+            await deliver(t, envelope('mediahub.picture.uploaded', { picture: 'pic_01M516F1WX5NN6C0EMW2V0G8Y9', owner: { type: 'user', id: sam.subject }, uploaded_at: iso() }, { source: 'media-hub' }));
+            assert.ok((await done()).includes('share-a-picture'));
         });
 
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {

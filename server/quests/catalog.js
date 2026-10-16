@@ -42,6 +42,8 @@ const SITES = Object.freeze({
     'openvibe.run': { name: 'OpenVibe.Run', what: 'jobs run on nodes' },
     'inventory.openvibe.network': { name: 'OpenVibe.Inventory', what: 'the items you own across OpenVibe' },
     'openvibe.bot': { name: 'OpenVibe.Bot', what: 'robots you drive from the browser' },
+    'openvibe.video': { name: 'OpenVibe.Video', what: 'videos you upload or record' },
+    'openvibe.pics': { name: 'OpenVibe.Pics', what: 'pictures you share' },
 });
 
 /**
@@ -221,6 +223,24 @@ const QUESTS = Object.freeze([
         why: 'Build a world in the map editor and publish it: anyone can join it from their browser.',
         steps: [{ event_type: 'games.world.published', count: 1, label: 'Publish one of your worlds at openvibe.games/worlds' }],
         reward: { badge: { id: 'world-builder', name: 'World Builder' }, coins: 20 },
+        repeatable: false,
+    },
+    {
+        id: 'publish-a-video',
+        site: 'openvibe.video',
+        title: 'Publish a video',
+        why: 'Upload a video or record one in the browser, then make it public: it gets captions and chapters, and a page anyone can find.',
+        steps: [{ event_type: 'mediahub.video.published', count: 1, label: 'Make one of your videos public at openvibe.video' }],
+        reward: { badge: { id: 'premiere', name: 'Premiere' }, coins: 15 },
+        repeatable: false,
+    },
+    {
+        id: 'share-a-picture',
+        site: 'openvibe.pics',
+        title: 'Share a picture',
+        why: 'Put a picture on OpenVibe.Pics and get a link to share or embed anywhere, with its location and camera details removed.',
+        steps: [{ event_type: 'mediahub.picture.uploaded', count: 1, label: 'Upload a picture at openvibe.pics' }],
+        reward: { badge: { id: 'snapshot', name: 'Snapshot' }, coins: 5 },
         repeatable: false,
     },
     {
@@ -448,6 +468,8 @@ const EVENTS = Object.freeze([
     { event_type: 'inventory.item.equipped', site: 'inventory.openvibe.network', what: 'An item was equipped; the payload names its owner, never what else they own.' },
     { event_type: 'bot.robot.online', site: 'openvibe.bot', what: 'A device connected and serves a robot; the payload names the robot\'s owner (events from before Bot named it are ignored).' },
     { event_type: 'games.world.published', site: 'openvibe.games', what: 'A player published one of their creator worlds for the first time; the payload names the owner.' },
+    { event_type: 'mediahub.video.published', site: 'openvibe.video', what: 'A video a person uploaded or recorded is public and ready for the first time; the payload names the owner.' },
+    { event_type: 'mediahub.picture.uploaded', site: 'openvibe.pics', what: 'A signed-in person uploaded a picture; the payload names the owner (and carries no link).' },
 ]);
 
 // The events Quest actually counts: the consumer subscribes to exactly these, and a quest may not count an event

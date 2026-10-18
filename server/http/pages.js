@@ -294,12 +294,15 @@ retry of a credit that did land can never pay twice. If the wallet refuses or is
 recorded with its reason and retried; nothing is silently dropped. A completion over a daily cap is marked
 <em>skipped</em> with the reason, and the quest itself is still completed and still pays its badge.</p>
 
-<h2>What Quest does not do yet</h2>
+<h2>Your account and your quests</h2>
 <ul>
-<li>Quests a community or a streamer writes themselves: they need moderation this release does not have.</li>
-<li>Repeatable quests and seasonal resets: every quest here completes once per person.</li>
-<li>Account deletion and account merges (ADR-033, ADR-029): Quest does not yet remove or re-key a person's rows
-when their Network account is deleted or merged. Until it does, progress rows stay as they are.</li>
+<li>Every quest completes once per person.</li>
+<li>Quests come from OpenVibe and from developers' apps (on their own app's events, badges only). Communities and
+streamers do not write quests: a quest sends people to do something.</li>
+<li>Deleting your OpenVibe account deletes your progress, completions and badges here, and an account export includes
+them (ADR-033).</li>
+<li>When two of your OpenVibe accounts are merged, everything here moves to the account you keep: each step keeps the
+higher count, a quest both finished counts once, and each badge keeps its first award (ADR-029).</li>
 </ul>
 <p><a href="/">The quests</a> · <a href="/updates">What shipped</a></p>`,
     }));

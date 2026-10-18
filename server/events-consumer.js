@@ -36,10 +36,12 @@ const { parseDelivery, createPgInbox } = require('openvibe-sdk/events');
 const catalog = require('./quests/catalog');
 const { apply } = require('./quests/apply');
 const accountDataLib = require('./identity/account-data');
+const subjectMerge = require('./identity/subject-merge');
 
 const CONSUMER = 'quest';
-// The catalog's events plus the two account topics (ADR-033): one subscription list, so boot subscribes to both.
-const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS]);
+// The catalog's events plus the account topics (ADR-033) and account merges (ADR-029): one subscription list, so boot
+// subscribes to all of them.
+const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS, subjectMerge.TOPIC]);
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, appQuests = null, now = () => Date.now(), log = console }) {
@@ -77,6 +79,22 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, items = null,
             if (String(accountOutcome).startsWith('ignored:')) stats.ignored++;
             else stats.applied++;
             return res.json({ event_id: event.event_id, outcome: accountOutcome });
+        }
+
+        // An account merge (ADR-029) folds one person's rows into the survivor's, once per merge_id
+        // (server/identity/subject-merge.js keeps its own ledger, so it never touches quest_event_inbox either).
+        if (event.event_type === subjectMerge.TOPIC) {
+            let mergeOutcome;
+            try {
+                mergeOutcome = await subjectMerge.apply(event, { s, log });
+            } catch (err) {
+                stats.failed++;
+                log.error(`[Events consumer] ${event.event_id} (${event.event_type}) failed:`, err.message);
+                return problem(503, 'quest.event_failed', 'processing failed; it will be retried');
+            }
+            if (String(mergeOutcome).startsWith('ignored:')) stats.ignored++;
+            else stats.applied++;
+            return res.json({ event_id: event.event_id, outcome: mergeOutcome });
         }
 
         let outcome;

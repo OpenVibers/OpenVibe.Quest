@@ -26,6 +26,17 @@ const TAGLINE = 'Quests across the whole network.';
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const siteName = (domain) => (catalog.SITES[domain] || {}).name || domain;
 
+/**
+ * A quest page's meta description (≤ 160 characters): why it matters, where it happens, what it counts and its badge.
+ * It was the "why" line alone ("An answer is worth more than a read."), which says nothing about the quest.
+ */
+function questDescription(quest) {
+    const steps = quest.steps.map((st) => (st.count > 1 ? `${st.label} ×${st.count}` : st.label)).join(', ');
+    const badge = quest.reward && quest.reward.badge && quest.reward.badge.name ? ` Badge: ${quest.reward.badge.name}.` : '';
+    const text = `${String(quest.why || '').trim().replace(/[.!?]*$/, '.')} A quest on ${siteName(quest.site)}: ${steps}.${badge}`;
+    return text.length <= 160 ? text : `${text.slice(0, 159).replace(/\s+\S*$/, '')}…`;
+}
+
 function createPageRoutes(ctx) {
     const { config, s, coins } = ctx;
     const r = asyncRouter();
@@ -153,7 +164,7 @@ ${completion ? html`<div class="notice" role="status">You completed this quest o
         return load().then((state) => page(req, res, {
             index: true, cache: mine ? null : PUBLIC_CACHE,
             title: quest.title,
-            description: quest.why,
+            description: questDescription(quest),
             crumbs: [{ label: 'Quests', href: '/' }, { label: quest.title }],
             body: html`<h1>${quest.title}</h1>
 <p class="lede">${quest.why}</p>

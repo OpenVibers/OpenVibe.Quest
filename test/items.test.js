@@ -118,6 +118,10 @@ function stubInventory() {
             try {
                 const page = await t.get('/quests/say-hello-in-chat');
                 assert.ok(page.text.includes('class="reward-item"') && page.text.includes('Sparkle'), 'the reward chip');
+                // The page describes the quest (why, where, what it counts, the badge), not its "why" line alone.
+                const desc = ((page.text.match(/<meta name="description" content="([^"]*)">/) || [])[1] || '').replace(/&#39;/g, "'");
+                assert.match(desc, /\. A quest on OpenVibe\.\w+: .+\.( Badge: .+\.)?$/, desc);
+                assert.ok(desc.length <= 160, desc);
                 const api = (await t.get('/api/v1/quests')).json();
                 const q = (api.quests || api).find((x) => x.id === 'say-hello-in-chat');
                 assert.deepStrictEqual(q.reward.item, { issuer: 'service:live', alias: 'px_sparkle', name: 'Sparkle', kind: 'Particle effect' });

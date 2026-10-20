@@ -2,8 +2,9 @@
 
 > Quests across the whole network.
 
-**Status:** first release. The quest log, the events consumer, the OpenCoins crediting and the pages are written and
-tested; it is deployed, and OpenCoins are off until the feature is turned on.
+**Status:** first release. The quest log, the events consumer, the OpenCoins crediting, the item rewards and the pages
+are written and tested; it is deployed, and OpenCoins have been credited in production since 2026-10-14
+(`QUEST_COINS=on`, within the daily caps).
 **Domain:** `openvibe.quest` · **Port:** 4980 · **Service id:** `quest` · **Env prefix:** `QUEST`
 **License:** AGPL-3.0 (same as every OpenVibe service).
 

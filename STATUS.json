@@ -32,7 +32,6 @@
   ],
   "notYet": [
     "Its own capabilities: the quest manifest in openvibe-contracts lists none yet (no quest.* capability exists)",
-    "OpenCoins are off in production until OpenVibe.Network grants the quest client identity.subject.resolve and network.coins.credit",
     "Community-made quests (streamers, communities, mods): they need moderation, which this release does not have",
     "Repeatable quests and seasonal resets: every quest completes once per person",
     "Account merges (ADR-029): quest_progress, quest_completions and quest_badges rows are not re-keyed when a Network account is merged into another (deletion is answered, ADR-033; a merge's aliases are erased with the account)",
@@ -51,5 +50,5 @@
     "crawl artifacts"
   ],
   "deployment": "openvibe-ovh: unit openvibe-quest.service on 127.0.0.1:4980 (git checkout /opt/openvibe.quest, env /etc/openvibe/quest.env, database ov_quest), deployed with `sudo ovhost deploy quest`; public at https://openvibe.quest since 2026-10-08.",
-  "updated": "2026-10-18"
+  "updated": "2026-10-20"
 }

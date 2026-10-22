@@ -72,7 +72,7 @@ legal pages).
 
 ## Capabilities
 
-The [service manifest](node_modules/openvibe-contracts/manifests/services/quest.json) lists **no capabilities of its
+The [service manifest](https://github.com/OpenVibers/OpenVibe.Contracts/blob/main/manifests/services/quest.json) lists **no capabilities of its
 own** and produces no events; no `/api/v1` route is guarded by one ([server/http/principal.js](server/http/principal.js)
 `CAPABILITIES` is empty). Quest calls these on other services with its own client-credentials token:
 

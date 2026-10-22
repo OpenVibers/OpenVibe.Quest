@@ -23,10 +23,10 @@ table { border-collapse: collapse; width: 100%; font-size: .92rem; }
 th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--border, #1f2d47); }
 th { color: var(--text-secondary, #96a7c2); font-weight: 600; }
 .badge { display: inline-block; font-size: .75rem; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); white-space: nowrap; line-height: 1.6; }
-.badge.ok { border-color: var(--success, #22c55e); color: var(--success, #22c55e); }
-.badge.info { border-color: var(--info, #38bdf8); color: var(--info, #38bdf8); }
-.badge.warn { border-color: var(--warning, #f59e0b); color: var(--warning, #f59e0b); }
-.badge.bad { border-color: var(--error, #ef4444); color: var(--error, #ef4444); }
+.badge.ok { border-color: var(--success, #22c55e); color: var(--success-text, var(--success, #22c55e)); }
+.badge.info { border-color: var(--info, #38bdf8); color: var(--info-text, var(--info, #38bdf8)); }
+.badge.warn { border-color: var(--warning, #f59e0b); color: var(--warning-text, var(--warning, #f59e0b)); }
+.badge.bad { border-color: var(--error, #ef4444); color: var(--error-text, var(--error, #ef4444)); }
 .notice { border-left: 3px solid var(--info, #38bdf8); padding: 8px 12px; margin: 12px 0; background: var(--bg-card, #131c2e); border-radius: 0 8px 8px 0; }
 .notice.ok { border-left-color: var(--success, #22c55e); }
 .notice.warn { border-left-color: var(--warning, #f59e0b); }
@@ -71,7 +71,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .reward { display: flex; flex-wrap: wrap; gap: 6px; }
 .reward-badge, .reward-coins { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-secondary, #96a7c2); }
 .reward-badge strong { color: var(--text-primary, #e6edf7); }
-.reward-coins { color: var(--warning, #f59e0b); border-color: color-mix(in srgb, var(--warning, #f59e0b) 40%, transparent); }
+.reward-coins { color: var(--warning-text, var(--warning, #f59e0b)); border-color: color-mix(in srgb, var(--warning, #f59e0b) 40%, transparent); }
 .reward-item { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent, #3b82f6) 45%, transparent); color: var(--text-primary, #e6edf7); background: color-mix(in srgb, var(--accent, #3b82f6) 10%, transparent); }
 .reward-item small { color: var(--text-secondary, #96a7c2); }   /* muted failed AA on the tinted chip */
 .reward-coins.soon { color: var(--text-muted, #7386a3); border-style: dashed; border-color: var(--border-light, #2c3d5c); }
@@ -79,7 +79,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .quest-series .medal { font-size: 1.15rem; }
 @media (prefers-reduced-motion: reduce) { .quest { transition: none; } }
 .steps { margin: .4rem 0; }
-.done { color: var(--success, #22c55e); font-weight: 700; }
+.done { color: var(--success-text, var(--success, #22c55e)); font-weight: 700; }
 .progress { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr auto; gap: .5rem; align-items: center; margin: .3rem 0; font-size: .9rem; }
 .progress progress { width: 100%; }
 .progress-count { color: var(--text-muted, #7386a3); font-variant-numeric: tabular-nums; }
@@ -92,7 +92,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-stats li { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border, #1f2d47); background: var(--bg-card, #131c2e); }
 .q-stats b { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
 .q-stats span { font-size: .86rem; color: var(--text-secondary, #96a7c2); }
-.quest-count { margin: 6px 0 0; font-size: .84rem; font-weight: 600; color: var(--success, #34d399); }
+.quest-count { margin: 6px 0 0; font-size: .84rem; font-weight: 600; color: var(--success-text, var(--success, #34d399)); }
 .q-top { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .q-top li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border, #1f2d47); background: var(--bg-card, #131c2e); }
 .q-top-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }

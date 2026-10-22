@@ -117,13 +117,35 @@ const owedItems = (db, questIds, limit = 50) => (questIds.length ? db.many(
       ORDER BY completed_at, id LIMIT $2`,
     [questIds, limit]) : Promise.resolve([]));
 
+/**
+ * The home page's figures, counts only: completions, the people with at least one, the OpenCoins that landed, and
+ * completions since `since` (an ISO time). Nothing here can name or single out a person.
+ */
+async function totals(db, since) {
+    const row = await db.maybe(
+        `SELECT count(*)::int AS completions, count(DISTINCT subject)::int AS people,
+                COALESCE(sum(coins) FILTER (WHERE coins_state = 'credited'), 0)::int AS coins,
+                count(*) FILTER (WHERE completed_at >= $1::text)::int AS recent
+           FROM quest_completions`,
+        [since]);
+    return {
+        completions: Number(row && row.completions) || 0,
+        people: Number(row && row.people) || 0,
+        coins: Number(row && row.coins) || 0,
+        recent: Number(row && row.recent) || 0,
+    };
+}
+
+/** Completions per quest (each is that quest's badge, awarded once): [{ quest_id, n }], counts and never people. */
+const completionsByQuest = (db) => db.many('SELECT quest_id, count(*)::int AS n FROM quest_completions GROUP BY quest_id');
+
 /** How many people have a badge — the count a quest page can show without naming anyone. */
 const badgeHolders = async (db, badgeId) => Number(await db.value('SELECT count(*) FROM quest_badges WHERE badge_id = $1', [badgeId]));
 
 module.exports = {
     DAY_MS, dayOf,
     bumpProgress, progressOf, progressFor,
-    completion, completionsFor, completionCount, complete,
+    completion, completionsFor, completionCount, complete, totals, completionsByQuest,
     awardBadge, badgesFor, badgesOf, badgeHolders,
     setCoins, owedCoins, creditedTo, creditedAll,
     setItem, owedItems,

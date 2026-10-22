@@ -13,6 +13,7 @@ const ovServe = require('openvibe-shared/serve');
 const frame = require('openvibe-shared/frame');
 const showcase = require('openvibe-shared/showcase');
 const cache = require('openvibe-shared/cache-policy');
+const seo = require('openvibe-shared/seo');
 const { asyncRouter } = require('./router');
 const { createDiscoveryRoutes, homeJsonLd } = require('./discovery');
 const { html, raw, table } = require('../render/html');
@@ -60,49 +61,135 @@ function createPageRoutes(ctx) {
         { empty: 'No events.' });
 
     // ── Home ─────────────────────────────────────────────────
+    // The home's figures (store.totals, store.completionsByQuest): counts only, read at most once a minute.
+    let pulseMemo = null;
+    const pulse = async () => {
+        const now = s.now();
+        if (pulseMemo && now - pulseMemo.at < 60_000) return pulseMemo.value;
+        const since = new Date(now - 7 * store.DAY_MS).toISOString();
+        const [totals, byQuest] = await Promise.all([store.totals(s.db, since), store.completionsByQuest(s.db)]);
+        const value = { ...totals, byQuest: new Map(byQuest.map((r) => [r.quest_id, Number(r.n)])) };
+        pulseMemo = { at: now, value };
+        return value;
+    };
+    const siteCount = Object.keys(catalog.SITES).length;
+    const countText = (n) => n.toLocaleString('en-US');
+
+    /** The figures under the hero: each one only when it has something to say. */
+    const statsStrip = (p) => {
+        const items = [
+            [catalog.all().length, `quests on ${siteCount} sites`],
+            p.completions > 0 && [p.completions, p.completions === 1 ? 'quest completed' : 'quests completed'],
+            p.people > 0 && [p.people, p.people === 1 ? 'person has earned badges' : 'people have earned badges'],
+            p.recent > 0 && [p.recent, 'completed in the last 7 days'],
+            coinsUi.coinsEnabled && p.coins > 0 && [p.coins, 'OpenCoins credited'],
+        ].filter(Boolean);
+        return html`<ul class="q-stats" aria-label="${SITE_NAME} in numbers">${items.map(([n, label]) => html`<li><b>${countText(n)}</b><span>${label}</span></li>`)}</ul>`;
+    };
+
+    /** The badges people hold most (all time), with the quest that pays each. */
+    const topBadges = (p) => {
+        const top = catalog.all().map((q) => ({ q, n: p.byQuest.get(q.id) || 0 })).filter((x) => x.n > 0)
+            .sort((a, b) => b.n - a.n || a.q.title.localeCompare(b.q.title)).slice(0, 6);
+        if (!top.length) return '';
+        return html`<section class="sc-sec" id="most-earned" aria-labelledby="most-earned-h"><h2 id="most-earned-h">Badges people earn most</h2>
+<p class="sc-lede">How many people hold each badge. Nobody is named: Quest shows counts, never who.</p>
+<ol class="q-top">${top.map(({ q, n }) => html`<li>${quests.medal(q, { earned: true })}<span class="q-top-main"><strong>${q.reward.badge.name}</strong><span>for <a href="/quests/${q.id}">${q.title}</a> on ${siteName(q.site)}</span></span><span class="q-top-n">${countText(n)} ${n === 1 ? 'person' : 'people'}</span></li>`)}</ol></section>`;
+    };
+
+    /** Quests nobody has finished yet (outside a series): the badge is there for the first person. */
+    const firstToFinish = (p) => {
+        const open = catalog.all().filter((q) => !q.series && !(p.byQuest.get(q.id) > 0)).slice(0, 6);
+        if (!open.length) return '';
+        return html`<section class="sc-sec" id="be-first" aria-labelledby="be-first-h"><h2 id="be-first-h">Nobody has these badges yet</h2>
+<p class="sc-lede">Quests no one has finished so far. Be the first to hold the badge.</p>
+<ul class="q-open">${open.map((q) => html`<li>${quests.medal(q)}<span><a href="/quests/${q.id}">${q.title}</a><small>${siteName(q.site)} · Badge: ${q.reward.badge.name}</small></span></li>`)}</ul></section>`;
+    };
+
+    /** Which sites Quest follows and the events each reports: the whole of what moves a quest. */
+    const sitesFollowed = () => {
+        const bySite = new Map();
+        for (const e of catalog.EVENTS) {
+            if (e.counted === false) continue;
+            if (!bySite.has(e.site)) bySite.set(e.site, []);
+            bySite.get(e.site).push(e.event_type);
+        }
+        return html`<ul class="q-sites">${[...bySite].map(([site, events]) => html`<li><a href="https://${site}">${siteName(site)}</a><small>${(catalog.SITES[site] || {}).what || ''}</small><span>${events.map((ev, i) => html`${i ? ' ' : ''}<code>${ev}</code>`)}</span></li>`)}</ul>`;
+    };
+
+    const FAQ = [
+        { q: 'What is OpenVibe.Quest?', a: `One quest log for the OpenVibe sites. It counts what you really do on ${siteCount} of them, like going live, posting in the forum or publishing a world, and pays a badge for each quest you finish.` },
+        { q: 'How do I start?', a: 'Use the OpenVibe sites while signed in to your OpenVibe account: what you do there counts, with nothing to join first. Sign in here to see your quest log and your badges.' },
+        { q: 'What are OpenCoins?', a: 'Loyalty points credited to your OpenVibe.Network wallet when a quest pays them, within a daily cap. They are never money and never Vibes.' },
+        { q: 'What does Quest track about me?', a: 'Only the events listed under How it works, one per real action. No page views, no clicks, no watch time and nothing you wrote. Private chat rooms and direct messages never reach Quest.' },
+        { q: 'Can other people see my progress?', a: 'No. Your log is yours alone. The only public part is your badge list: each badge\'s name and the date you earned it.' },
+        { q: 'Can developers add quests?', a: 'Yes. A developer app defines quests on its own events with an app token through the OpenVibe SDK. They pay a badge named for the app, never OpenCoins.' },
+    ];
+
     r.get('/', async (req, res) => {
-        const appList = ctx.appQuests ? await ctx.appQuests.listed(24) : [];
+        const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(24) : [], pulse()]);
+        const site = String(config.baseUrl).replace(/\/+$/, '');
         const hero = showcase.hero({
-            eyebrow: `${SITE_NAME} · ${TAGLINE}`,
+            eyebrow: SITE_NAME,
             title: 'Quests across OpenVibe.',
             accent: 'Badges for what you really do.',
-            lede: `${SITE_NAME} is the network's shared quest log: one place that knows what you have really done on the OpenVibe sites it follows, and rewards it with badges${coinsUi.coinsEnabled ? ' and OpenCoins' : ' (and OpenCoins, once they are switched on)'}. Quest runs no activities of its own — it listens to what the sites already report, and nothing else.`,
+            lede: `Go live, start a thread, publish a world, share a picture: ${SITE_NAME} counts what you really do on ${siteCount} OpenVibe sites and rewards it with badges${coinsUi.coinsEnabled ? ' and OpenCoins' : ' (and OpenCoins, once they are switched on)'}. One quest log for the whole network, with nothing new to install or learn.`,
             actions: signedIn(req)
-                ? [{ label: 'Your quest log', href: '/me', primary: true }, { label: 'How it works', href: '/how-it-works' }]
-                : [{ label: 'Sign in to start', href: '/auth/login?next=%2Fme', primary: true }, { label: 'How it works', href: '/how-it-works' }],
-            note: 'Open source (AGPL-3.0). Rewards are badges and OpenCoins — loyalty points, never money, and never Vibes.',
+                ? [{ label: 'Your quest log', href: '/me', primary: true }, { label: 'See the quests', href: '#the-quests' }]
+                : [{ label: 'Sign in to start', href: '/auth/login?next=%2Fme', primary: true }, { label: 'See the quests', href: '#the-quests' }],
+            note: 'Open source (AGPL-3.0). Rewards are badges, items and OpenCoins: loyalty points, never money and never Vibes.',
         });
         page(req, res, {
             index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,
-            description: 'One quest log across the OpenVibe sites: badges for what you really do on Live, Chat, Community, Games and more, built on real activity.',
-            jsonLd: homeJsonLd(config),
+            title: 'Earn badges for what you do on OpenVibe',
+            description: `One quest log across ${siteCount} OpenVibe sites: finish quests by streaming, posting, chatting and playing, and earn badges, items and OpenCoins.`,
+            jsonLd: [
+                ...homeJsonLd(config),
+                seo.jsonLd.itemList('OpenVibe quests', [
+                    ...catalog.all().filter((q) => !q.series).map((q) => ({ name: q.title, url: `${site}/quests/${q.id}` })),
+                    ...Object.values(catalog.SERIES).map((x) => ({ name: x.title, url: `${site}/series/${x.id}` })),
+                ], { url: `${site}/` }),
+                seo.jsonLd.faq(FAQ),
+            ],
             styles: [showcase.STYLESHEET],
             body: html`${raw(hero)}
+${statsStrip(p)}
+${topBadges(p)}
 ${raw(showcase.features({
                 title: 'What Quest is',
-                lede: 'One quest log across eight OpenVibe sites (Live, the Network, Community, Chat, the Wiki, Games, Tools and Space), built on what the sites already tell the network.',
+                lede: `One quest log across ${siteCount} OpenVibe sites, built on what the sites already tell the network.`,
                 items: [
                     { icon: 'ov:page', title: 'One log, many sites', text: 'A stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat: the same log, grouped by the site the event came from.' },
                     { icon: 'ov:account', title: 'Rewards are badges', text: coinsUi.coinsEnabled ? 'A quest pays a badge that shows on your profile across the network, and OpenCoins into your OpenVibe.Network wallet.' : 'A quest pays a badge that shows on your profile across the network and, once they are switched on, OpenCoins.' },
                     { icon: 'ov:tools', title: 'OpenCoins, not Vibes', text: 'OpenCoins are loyalty points credited through OpenVibe.Network\'s wallet. They are never money, they are not Vibes, and Vibes are never touched here.' },
-                    { icon: 'ov:games', title: 'Made by apps', text: 'A developer app defines quests on its own events with an app token (the SDK\'s quests): they pay a badge named for the app, never OpenCoins. Quests a streamer writes come later.' },
+                    { icon: 'ov:games', title: 'Made by apps', text: 'A developer app defines quests on its own events with an app token (the SDK\'s quests): they pay a badge named for the app, never OpenCoins.' },
                 ],
             }))}
 <section class="sc-sec" id="the-quests" aria-labelledby="the-quests-h"><h2 id="the-quests-h">The quests</h2>
-<p class="sc-lede">Every quest below counts something a person really did on an OpenVibe site. Grouped by the site whose events it counts.</p>
-${quests.list(catalog.grouped({ fold: true }), coinsUi)}
+<p class="sc-lede">Every quest below counts something a person really did on an OpenVibe site, grouped by the site whose events it counts.</p>
+${quests.list(catalog.grouped({ fold: true }), { ...coinsUi, counts: p.byQuest })}
 ${quests.coinsNote(coinsUi)}</section>
+${firstToFinish(p)}
 ${appList.length ? html`<section class="sc-sec" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
 <p class="sc-lede">Quests that developer apps on OpenVibe define on their own events. Each pays a badge named for the app, never OpenCoins.</p>
 <ul class="quest-list">${appList.map((q) => html`<li class="quest-card"><h3><a href="/apps/quests/${q.id}">${q.title}</a></h3>${q.why ? html`<p>${q.why}</p>` : ''}<p class="muted">Badge: ${q.reward.badge.name}${q.url ? html` · <a href="${q.url}" rel="nofollow noopener">Where to do it</a>` : ''}</p></li>`)}</ul></section>` : ''}
-<section class="sc-sec" id="how-progress-works" aria-labelledby="how-progress-works-h"><h2 id="how-progress-works-h">How progress works</h2>
-<p class="sc-lede">Quest does not watch you and does not ask the sites who you are. The network's event backbone,
-OpenVibe.Events, delivers the domain events a site already emits, and Quest counts the ones below — one per real
-action, with the person taken from the field the event's own schema defines. Nothing else is tracked: no page
-views, no clicks, no watch time, and no content you wrote.</p>
-${eventsTable()}
-<p class="sc-note">What each one means is on <a href="/how-it-works">How it works</a>. That list is the whole of it. A quest completes when every one of its steps reaches its count;
-the completion, its badge and its OpenCoins are recorded once. <a href="/how-it-works">The rules, in full</a>.</p></section>
+${raw(showcase.steps({
+                id: 'how-progress-works',
+                title: 'How quests work across sites',
+                lede: 'Quest does not watch you and runs no activities of its own. It counts what the sites already report.',
+                items: [
+                    { title: 'You do something on a site', text: 'Go live on OpenVibe.Live, reply in a forum thread, publish a creator world on OpenVibe.Games.' },
+                    { title: 'The site reports it', text: 'The site sends the event it already emits to OpenVibe.Events, with the person named by the event\'s own schema.' },
+                    { title: 'Quest counts it', text: 'One count per real action. When every step of a quest reaches its count, the quest is complete, once.' },
+                    { title: 'You get the reward', text: 'The badge goes on your profile, an item goes to your inventory where the quest gives one, and OpenCoins go to your wallet.' },
+                ],
+            }))}
+<section class="sc-sec" aria-labelledby="sites-followed-h"><h2 id="sites-followed-h">The sites Quest follows</h2>
+<p class="sc-lede">These events are the whole of what moves a quest. Nothing else is tracked: no page views, no clicks, no watch time and no content you wrote.</p>
+${sitesFollowed()}
+<p class="sc-note">What each event means is on <a href="/how-it-works">How it works</a>, with what is stored and what is public.</p></section>
+<section class="sc-sec" id="questions" aria-labelledby="questions-h"><h2 id="questions-h">Questions</h2>
+<div class="q-faq">${FAQ.map((f) => html`<details><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div></section>
 ${raw(showcase.cta({
                 title: signedIn(req) ? 'Your quest log is waiting' : 'Start your quest log',
                 text: signedIn(req) ? 'Your progress, your badges, and what each quest still needs.' : 'Sign in with OpenVibe and the sites you already use start counting.',

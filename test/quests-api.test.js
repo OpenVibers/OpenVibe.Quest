@@ -130,6 +130,14 @@ const { render } = require('../server/render/html');
             assert.ok(home.text.includes('OpenVibe.Live'), 'the quests are grouped by site');
             assert.ok(home.text.includes('Say hello in chat'), 'a chat quest is listed');
             assert.ok(home.text.includes('chat.room.message.created'), 'the events are listed');
+            // The live parts are counts, never people: kim's completion shows as a number and nothing about her.
+            assert.ok(home.text.includes('Badges people earn most'), 'the most-earned badges');
+            assert.ok(home.text.includes('Earned by 1 person'), 'a quest card says how many hold its badge');
+            assert.ok(home.text.includes('<b>1</b><span>quest completed</span>'), 'the figures under the hero');
+            assert.ok(home.text.includes('Nobody has these badges yet'), 'the quests nobody has finished');
+            assert.ok(home.text.includes('"@type":"FAQPage"') && home.text.includes('Can other people see my progress?'), 'the FAQ and its JSON-LD');
+            assert.ok(home.text.includes('"@type":"ItemList"'), 'the quests as an ItemList');
+            assert.ok(!home.text.includes(kim.subject) && !home.text.includes(kim.username), 'nobody is named');
             const how = await t.get('/how-it-works');
             assert.ok(how.text.includes('never money'), 'the rules say what rewards are');
             assert.ok(how.text.includes('Vibes'), 'and that they are never Vibes');

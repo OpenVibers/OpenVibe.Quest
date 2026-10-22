@@ -18,13 +18,16 @@ const BUDGETS = {
     // site, each with its reward) and the list of the events Quest counts. Measured 34.0 KB raw / 7.7 KB brotli.
     // Raised 2026-10-12 with openvibe-shared 4.1.3: the head reserves the navbar's 52px (120 bytes). Measured 37.6 KB raw.
     // Raised 2026-10-15: five more quests (Blog, Deals, Run, Inventory) and their events on the home page. Measured 43 KB raw.
-    htmlRawKB: 47,   // measured 43 (the home page: hero, features, the quests, the events, cta, JSON-LD)
-    htmlBrotliKB: 9.8,   // 9
+    // Raised 2026-10-22 with the rich home: figures under the hero, the most-earned badges, each card's "earned by",
+    // the badges nobody holds yet, the sites Quest follows, a FAQ and the quests as ItemList + FAQPage JSON-LD.
+    // Measured 54.3 KB raw / 10.6 KB brotli on a fresh database.
+    htmlRawKB: 60,   // measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
+    htmlBrotliKB: 11.7,   // 10.6
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 264,   // 239.8
     jsBrotliKB: 62.5,   // 56.5
     cssFiles: 2,   // 2 (app.css + the cached /shared/showcase.css)
-    cssRawKB: 21.0,   // 19.1 with the quest medals and cards
+    cssRawKB: 25.0,   // 22.6 with the quest medals and cards, and the home's figures, badges, sites and FAQ (2026-10-22)
     cssBrotliKB: 5.1,   // 4.6
     externalFiles: 0,   // 0
 };

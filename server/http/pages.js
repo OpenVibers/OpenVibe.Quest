@@ -12,6 +12,10 @@
 const ovServe = require('openvibe-shared/serve');
 const frame = require('openvibe-shared/frame');
 const showcase = require('openvibe-shared/showcase');
+// A person's stuff across the network (openvibe-shared 4.13 profile-panel: items, badges, achievements), shown once the
+// pinned openvibe-shared serves it; before that the section is simply not there.
+const HAS_PROFILE_PANEL = require('openvibe-shared/files').isBrowserFile('profile-panel.js');
+const USERNAME_RE = /^[A-Za-z0-9_]{1,32}$/;
 const cache = require('openvibe-shared/cache-policy');
 const seo = require('openvibe-shared/seo');
 const { asyncRouter } = require('./router');
@@ -153,6 +157,7 @@ function createPageRoutes(ctx) {
             ],
             styles: [showcase.STYLESHEET],
             body: html`${raw(hero)}
+${yourStuff(req)}
 ${statsStrip(p)}
 ${topBadges(p)}
 ${raw(showcase.features({
@@ -293,6 +298,17 @@ ${quests.coinsNote(coinsUi)}
     });
 
     // ── Your quest log ───────────────────────────────────────
+    /** "Your stuff across OpenVibe": the signed-in person's items, badges and achievements, the same panel every site shows. */
+    const yourStuff = (req) => {
+        const name = signedIn(req) && req.viewer ? String(req.viewer.username || '') : '';
+        if (!HAS_PROFILE_PANEL || !USERNAME_RE.test(name)) return '';
+        return html`<section class="sc-sec" id="your-stuff" aria-labelledby="your-stuff-h"><h2 id="your-stuff-h">Your stuff across OpenVibe</h2>
+<p class="sc-lede">Your items, badges and achievements, the same on every OpenVibe site.</p>
+<link rel="stylesheet" href="${ovServe.url('profile-panel.css')}">
+<div data-ov-profile="${name}"><a href="https://openvibe.network/@${name}">Your profile</a></div>
+<script src="${ovServe.url('profile-panel.js')}" defer></script></section>`;
+    };
+
     r.get('/me', async (req, res) => {
         if (!signedIn(req)) return page(req, res, {
             title: 'Your quest log',
@@ -328,6 +344,7 @@ each quest still needs, and the badges you have earned.</p>
             crumbs: [{ label: 'Quests', href: '/' }, { label: 'Your quest log' }],
             body: html`<h1>Your quest log</h1>
 <p class="muted">Signed in as <strong>${req.viewer.displayName || req.viewer.username || 'you'}</strong>. One log across every OpenVibe site.</p>
+${yourStuff(req)}
 <h2>In progress</h2>
 ${started.length ? started.map((q) => html`<section class="quest-block"><h3><a href="/quests/${q.id}">${q.title}</a> <small>on ${siteName(q.site)}</small></h3>
 ${q.steps.map((step, i) => quests.progress(step.label, (seen.get(q.id) || new Map()).get(i) || 0, step.count))}

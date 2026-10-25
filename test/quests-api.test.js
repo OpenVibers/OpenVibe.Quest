@@ -158,6 +158,10 @@ const { render } = require('../server/render/html');
             assert.ok(mine.text.includes('Completed'), 'the completion');
             assert.ok(mine.text.includes(`/api/v1/profiles/${kim.subject}/badges`), 'it says what is public');
             assert.ok(!mine.text.includes(ana.subject), 'nothing about anyone else');
+            // Your stuff across OpenVibe (openvibe-shared profile-panel), once the pinned openvibe-shared serves it.
+            const panel = require('openvibe-shared/files').isBrowserFile('profile-panel.js');
+            assert.strictEqual(mine.text.includes(`data-ov-profile="${kim.username}"`), panel, panel ? 'the person\'s stuff panel, for them' : 'no panel before openvibe-shared serves it');
+            assert.ok(!anon.text.includes('data-ov-profile'), 'signed out: no panel');
         });
 
         await check('crawl artifacts cover the quest pages and keep the private ones out', async () => {

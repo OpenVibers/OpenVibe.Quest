@@ -28,16 +28,16 @@
     "GET /api/v1/quests, /quests/:id, /me/quests (a signed-in person's own log), /profiles/:subject/badges (id, name and date only)",
     "Pages: home (the quests grouped by site, how progress works), a quest, your quest log (plain <progress> bars), the rules, the update log; robots, sitemap with every quest page, llms.txt, llms-full.txt",
     "Tests on temp PGlite databases with a mock Network that also serves the wallet: signature refusal, idempotent replay, counting to completion, badge once, coins off, coins on with caps and a retry, events with no subject ignored, /me requires sign-in, hostile titles escaped",
-    "Account export and deletion (ADR-033): the quest progress, completions and badges a person has are exported to OpenVibe.Network on network.account.export_requested and deleted whole on network.account.deleted, with the counts confirmed back; the two account topics join the catalog's events in the boot subscriptions (server/identity/account-data.js)"
+    "Account export and deletion (ADR-033): the quest progress, completions and badges a person has are exported to OpenVibe.Network on network.account.export_requested and deleted whole on network.account.deleted, with the counts confirmed back; the two account topics join the catalog's events in the boot subscriptions (server/identity/account-data.js)",
+    "App quests (contracts 0.193.0, capability quest.app_quest.manage): a developer app defines quests on its own project's app.<project_key>.* events; only production counts, the reward is a badge named for the app, at most 20 active a project, listed on the home under \"Made by apps\""
   ],
   "notYet": [
-    "Its own capabilities: the quest manifest in openvibe-contracts lists none yet (no quest.* capability exists)",
     "Community-made quests (streamers, communities, mods): they need moderation, which this release does not have",
     "Repeatable quests and seasonal resets: every quest completes once per person",
     "Account merges (ADR-029): quest_progress, quest_completions and quest_badges rows are not re-keyed when a Network account is merged into another (deletion is answered, ADR-033; a merge's aliases are erased with the account)",
     "Quest chains, leaderboards and per-community quests; a streamer's getting-started steps still live on OpenVibe.Live"
   ],
-  "capabilitiesRegistered": false,
+  "capabilitiesRegistered": true,
   "serviceManifestRegistered": true,
   "deployed": true,
   "placeholderInSites": false,

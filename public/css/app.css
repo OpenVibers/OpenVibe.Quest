@@ -63,7 +63,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .quest-title { font-weight: 700; font-size: 1.02rem; color: var(--text-primary, #e6edf7); text-decoration: none; }
 .quest-title:hover { color: var(--accent-light, #60a5fa); text-decoration: underline; text-underline-offset: 3px; }
 .quest-why { margin: 4px 0 8px; color: var(--text-secondary, #96a7c2); font-size: .92rem; line-height: 1.45; }
-.quest-steps { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
+.quest-steps { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; font-size: .9rem; }
 .quest-steps li { position: relative; padding-left: 22px; color: var(--text-primary, #e6edf7); }
 .quest-steps li::before { content: ''; position: absolute; left: 0; top: .28em; width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid var(--border-light, #2c3d5c); }
 .step-count { font-size: .78rem; font-weight: 700; color: var(--text-muted, #7386a3); }

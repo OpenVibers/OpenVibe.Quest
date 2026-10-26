@@ -195,6 +195,7 @@ ${sitesFollowed()}
 <p class="sc-note">What each event means is on <a href="/how-it-works">How it works</a>, with what is stored and what is public.</p></section>
 <section class="sc-sec" id="questions" aria-labelledby="questions-h"><h2 id="questions-h">Questions</h2>
 <div class="q-faq">${FAQ.map((f) => html`<details><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div></section>
+${raw(showcase.network({ service: 'quest' }))}
 ${raw(showcase.cta({
                 title: signedIn(req) ? 'Your quest log is waiting' : 'Start your quest log',
                 text: signedIn(req) ? 'Your progress, your badges, and what each quest still needs.' : 'Sign in with OpenVibe and the sites you already use start counting.',

@@ -44,7 +44,7 @@ const BOOST = /<script src="\/shared\/boost\.js\?v=[0-9a-f]{12}" data-main="#mai
         assert.ok(head.includes('<link rel="canonical" href="https://openvibe.quest/">'), 'canonical');
         assert.ok(head.includes('<meta name="robots" content="index, follow">'), 'robots');
         const ld = [...head.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1])['@type']);
-        assert.deepStrictEqual(ld, ['WebSite', 'WebApplication', 'WebPage', 'ItemList', 'FAQPage'], 'the home JSON-LD: the site, the quests and the questions it answers');
+        assert.deepStrictEqual(ld, ['WebSite', 'WebApplication', 'WebPage', 'ItemList', 'FAQPage', 'Organization'], 'the home JSON-LD: the site, the quests and the questions it answers');
         for (const tag of ['<meta property="og:title"', 'data-ov-icon="quest"', '/css/app.css?v=', '/shared/theme-loader.js', '/shared/navbar.js', '/shared/footer.js', '<meta name="referrer"']) {
             assert.ok(head.includes(tag), `head has ${tag}`);
         }

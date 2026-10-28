@@ -80,16 +80,17 @@ function createPageRoutes(ctx) {
     const countText = (n) => n.toLocaleString('en-US');
 
     /** The figures under the hero: each one only when it has something to say. */
-    const statsStrip = (p) => {
-        const items = [
-            [catalog.all().length, `quests on ${siteCount} sites`],
-            p.completions > 0 && [p.completions, p.completions === 1 ? 'quest completed' : 'quests completed'],
-            p.people > 0 && [p.people, p.people === 1 ? 'person has earned badges' : 'people have earned badges'],
-            p.recent > 0 && [p.recent, 'completed in the last 7 days'],
-            coinsUi.coinsEnabled && p.coins > 0 && [p.coins, 'OpenCoins credited'],
-        ].filter(Boolean);
-        return html`<ul class="q-stats" aria-label="${SITE_NAME} in numbers">${items.map(([n, label]) => html`<li><b>${countText(n)}</b><span>${label}</span></li>`)}</ul>`;
-    };
+    // The numbers under the hero: the shared strip (three across on a phone), each with its icon.
+    const statsStrip = (p) => raw(showcase.stats({
+        title: `${SITE_NAME} in numbers`,
+        items: [
+            { value: countText(catalog.all().length), label: `quests on ${siteCount} sites`, icon: 'ov:quest' },
+            p.completions > 0 && { value: countText(p.completions), label: p.completions === 1 ? 'quest finished' : 'quests finished', icon: 'ov:check' },
+            p.people > 0 && { value: countText(p.people), label: p.people === 1 ? 'person with badges' : 'people with badges', icon: 'ov:account' },
+            p.recent > 0 && { value: countText(p.recent), label: 'finished this week', icon: 'ov:history' },
+            coinsUi.coinsEnabled && p.coins > 0 && { value: countText(p.coins), label: 'OpenCoins given', icon: 'ov:tips' },
+        ].filter(Boolean),
+    }));
 
     /** The badges people hold most (all time), with the quest that pays each. */
     const topBadges = (p) => {
@@ -133,15 +134,16 @@ function createPageRoutes(ctx) {
     r.get('/', async (req, res) => {
         const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(24) : [], pulse()]);
         const site = String(config.baseUrl).replace(/\/+$/, '');
+        // The navbar already says OpenVibe.Quest: the hero says what you get, in plain words, and where to start.
         const hero = showcase.hero({
-            eyebrow: SITE_NAME,
-            title: 'Quests across OpenVibe.',
-            accent: 'Badges for what you really do.',
-            lede: `Go live, start a thread, publish a world, share a picture: ${SITE_NAME} counts what you really do on ${siteCount} OpenVibe sites and rewards it with badges${coinsUi.coinsEnabled ? ' and OpenCoins' : ' (and OpenCoins, once they are switched on)'}. One quest log for the whole network, with nothing new to install or learn.`,
+            eyebrow: { icon: 'ov:quest', text: 'Free, nothing to install' },
+            title: 'Earn badges',
+            accent: 'for what you already do on OpenVibe.',
+            lede: `Go live, post in the forum, publish a world: every quest you finish on any of ${siteCount} OpenVibe sites earns a badge${coinsUi.coinsEnabled ? ' and OpenCoins' : ''}. One quest log follows you everywhere.`,
             actions: signedIn(req)
-                ? [{ label: 'Your quest log', href: '/me', primary: true }, { label: 'See the quests', href: '#the-quests' }]
-                : [{ label: 'Sign in to start', href: '/auth/login?next=%2Fme', primary: true }, { label: 'See the quests', href: '#the-quests' }],
-            note: 'Open source (AGPL-3.0). Rewards are badges, items and OpenCoins: loyalty points, never money and never Vibes.',
+                ? [{ label: 'Your quest log', href: '/me', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '#the-quests', icon: 'ov:search' }]
+                : [{ label: 'Start earning', href: '/auth/login?next=%2Fme', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '#the-quests', icon: 'ov:search' }],
+            note: 'Badges, items and OpenCoins: loyalty points, never money. Open source (AGPL-3.0).',
         });
         page(req, res, {
             index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,

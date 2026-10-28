@@ -21,7 +21,7 @@ const BUDGETS = {
     // Raised 2026-10-22 with the rich home: figures under the hero, the most-earned badges, each card's "earned by",
     // the badges nobody holds yet, the sites Quest follows, a FAQ and the quests as ItemList + FAQPage JSON-LD.
     // Measured 54.3 KB raw / 10.6 KB brotli on a fresh database.
-    htmlRawKB: 66,   // 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
+    htmlRawKB: 69,   // 67.5 the hero's and the numbers' icons (inline ring icons, 2026-10-28); 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
     htmlBrotliKB: 13,   // 11.8 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; 10.6
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 297,   // 293 openvibe-shared 4.22.0: the navbar's magnifier search button and More dropdown (search.js and loading.js load only when used); 287.2 Shared 4.17.0: OpenCoins and Vibes chips (wallet: true) in the navbar; 273.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; 264.3 with Shared 4.13.0 (2026-10-26: account links); 239.8

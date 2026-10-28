@@ -133,7 +133,7 @@ const { render } = require('../server/render/html');
             // The live parts are counts, never people: kim's completion shows as a number and nothing about her.
             assert.ok(home.text.includes('Badges people earn most'), 'the most-earned badges');
             assert.ok(home.text.includes('Earned by 1 person'), 'a quest card says how many hold its badge');
-            assert.ok(home.text.includes('<b>1</b><span>quest completed</span>'), 'the figures under the hero');
+            assert.ok(/<dt>quest finished<\/dt><dd><span class="sc-stat-ic">[\s\S]*?<\/span>1<\/dd>/.test(home.text), 'the figures under the hero, each with its icon');
             assert.ok(home.text.includes('Nobody has these badges yet'), 'the quests nobody has finished');
             assert.ok(home.text.includes('"@type":"FAQPage"') && home.text.includes('Can other people see my progress?'), 'the FAQ and its JSON-LD');
             assert.ok(home.text.includes('"@type":"ItemList"'), 'the quests as an ItemList');
@@ -200,7 +200,7 @@ const { render } = require('../server/render/html');
             const home = await on.get('/');
             assert.strictEqual(home.status, 200);
             assert.ok(!home.text.includes('once they are switched on'), 'no promise of something already on');
-            assert.ok(home.text.includes('rewards it with badges and OpenCoins'));
+            assert.ok(home.text.includes('earns a badge and OpenCoins'));
             assert.ok(home.text.includes('OpenCoins into your OpenVibe.Network wallet'));
         });
     } finally { await on.close(); }

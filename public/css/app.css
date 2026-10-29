@@ -103,7 +103,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
     .q-rails .ovk-rail-btn { display: none; }
     .q-rails .ovk-tabs { flex-wrap: wrap; margin: 0; padding: 0 0 8px; overflow: visible; }
 }
-/* 44 px to the touch (the kit's rule): its See all link is 32 px and its filter pills 36 px in this release. */
+/* 44 px to the touch (the kit's rule): its See all link is 32 px and its filter pills 36 px (openvibe-shared 4.37.0). */
 @media (pointer: coarse), (max-width: 759px) {
     .q-rails .ovk-rail-more, .page .ovk-tabs a { min-height: 44px; }
     .q-sites a, .site-group h3 a { display: inline-flex; align-items: center; min-height: 44px; }

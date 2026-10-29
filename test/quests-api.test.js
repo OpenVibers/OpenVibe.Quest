@@ -155,6 +155,10 @@ const { render } = require('../server/render/html');
             const chat = await t.get('/quests?site=chat');
             assert.ok(chat.text.includes('Say hello in chat') && !chat.text.includes('href="/quests/go-live"'), 'a site tab shows that site\'s quests only');
             assert.ok(chat.text.includes('<link rel="canonical" href="https://openvibe.quest/quests">'), 'one canonical for every tab');
+            const twin = await t.get('/quests.md');
+            assert.strictEqual(twin.status, 200);
+            assert.match(twin.headers.get('content-type'), /^text\/markdown/);
+            assert.ok(twin.text.includes('(/quests/go-live)'), 'the index has a Markdown twin like the other public pages');
             // A badge's picture: an SVG for a quest, a series and nothing else.
             const svg = await t.get('/quests/go-live/badge.svg');
             assert.strictEqual(svg.status, 200);

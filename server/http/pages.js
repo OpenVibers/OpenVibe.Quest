@@ -50,7 +50,7 @@ function createPageRoutes(ctx) {
     const r = asyncRouter();
     const PUBLIC_CACHE = cache.htmlHeaders({ maxAge: 300 });
     // The pages with a Markdown twin (openvibe-shared/agent-layer): the public ones only.
-    const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
+    const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
     const page = (req, res, o, status = 200) => send(res, status, { viewer: req.viewer, config, path: req.originalUrl, agentLayer: TWIN_PATH_RE.test(String(req.path || '/').split('?')[0]), llms: '/llms.txt', ...o });
     const signedIn = (req) => req.viewer && req.viewer.kind === 'user' && req.viewer.subject;
     const coinsUi = { coinsEnabled: coins.enabled, dailyCap: config.coins.dailyCap, globalDailyCap: config.coins.globalDailyCap };

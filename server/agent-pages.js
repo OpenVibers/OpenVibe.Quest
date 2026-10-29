@@ -5,7 +5,7 @@
 // without a session or a cookie, so a twin cannot drift from the page a browser gets and never carries a
 // signed-in person's view. A page that is not public (a person's own page, a missing page) answers 404
 // and has no twin.
-const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
+const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
 
 /** A request as an anonymous browser makes it: no session, no cookies. */
 function anonymousRequest(path, query, host) {

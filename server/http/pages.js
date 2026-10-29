@@ -170,11 +170,11 @@ function createPageRoutes(ctx) {
 ${statsStrip(p)}
 ${yourStuff(req)}
 <section class="sc-sec q-rails">
-${raw(kit.rail({ id: 'the-quests', title: first.some((e) => e.n > 0) ? 'Badges people earn most' : 'Quests to start with', more: { href: '/quests', label: `See all ${total}` }, items: first.map(entryCard) }))}
+${raw(kit.rail({ id: 'the-quests', wrap: true, title: first.some((e) => e.n > 0) ? 'Badges people earn most' : 'Quests to start with', more: { href: '/quests', label: `See all ${total}` }, items: first.map(entryCard) }))}
 <p class="q-kinds-h" aria-hidden="true">Quests by site</p>
 ${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', items: kinds }))}
-${raw(kit.rail({ id: 'be-first', title: 'Nobody has these badges yet', items: open.map(entryCard) }))}
-${raw(kit.rail({ id: 'app-quests', title: 'Made by apps', more: { href: '/quests#app-quests', label: 'See all' }, items: appList.map(quests.appKitCard) }))}
+${raw(kit.rail({ id: 'be-first', wrap: true, title: 'Nobody has these badges yet', items: open.map(entryCard) }))}
+${raw(kit.rail({ id: 'app-quests', wrap: true, title: 'Made by apps', more: { href: '/quests#app-quests', label: 'See all' }, items: appList.map(quests.appKitCard) }))}
 </section>
 <section class="sc-sec q-folds" id="how-it-works" aria-labelledby="how-it-works-h"><h2 id="how-it-works-h">How it works</h2>
 <p class="sc-lede">Quest runs no activities of its own: it counts what the sites already report, one count per real action. Nothing else is tracked: no page views, no clicks, no watch time and no content you wrote.</p>

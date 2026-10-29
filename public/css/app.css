@@ -97,15 +97,12 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-rails .ovk-rail:first-child { margin-top: 0; }
 .q-rails .ovk-tabs { margin-top: 0; }
 .q-kinds-h { margin: 4px 0 6px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted, #7386a3); }
-/* Phones swipe the rails; from 760 px they wrap into a grid, so a mouse needs no arrows (and no kit-web.js). */
+/* The rails wrap into a grid from 760 px (kit.rail wrap, openvibe-shared 4.39.0); the filter pills above them wrap too. */
 @media (min-width: 760px) {
-    .q-rails .ovk-rail-track { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-columns: auto; overflow: visible; margin: 0; padding: 2px 0 10px; }
-    .q-rails .ovk-rail-btn { display: none; }
     .q-rails .ovk-tabs { flex-wrap: wrap; margin: 0; padding: 0 0 8px; overflow: visible; }
 }
-/* 44 px to the touch (the kit's rule): its See all link is 32 px and its filter pills 36 px (openvibe-shared 4.37.0). */
+/* 44 px to the touch (the kit's See all and pills are since 4.39.0): this page's own site links. */
 @media (pointer: coarse), (max-width: 759px) {
-    .q-rails .ovk-rail-more, .page .ovk-tabs a { min-height: 44px; }
     .q-sites a, .site-group h3 a { display: inline-flex; align-items: center; min-height: 44px; }
 }
 .q-folds .ovk-fold-body p, .q-steps li { color: var(--text-secondary, #96a7c2); line-height: 1.55; }

@@ -12,6 +12,9 @@
 const ovServe = require('openvibe-shared/serve');
 const frame = require('openvibe-shared/frame');
 const showcase = require('openvibe-shared/showcase');
+const kit = require('openvibe-shared/kit');
+// The home's stylesheets: the showcase (hero, sections), then the kit's controls and its cards and rails (room.css).
+const KIT_STYLES = [showcase.STYLESHEET, 'kit.css', 'room.css'];
 // A person's stuff across the network (openvibe-shared 4.13 profile-panel: items, badges, achievements), shown once the
 // pinned openvibe-shared serves it; before that the section is simply not there.
 const HAS_PROFILE_PANEL = require('openvibe-shared/files').isBrowserFile('profile-panel.js');
@@ -47,7 +50,7 @@ function createPageRoutes(ctx) {
     const r = asyncRouter();
     const PUBLIC_CACHE = cache.htmlHeaders({ maxAge: 300 });
     // The pages with a Markdown twin (openvibe-shared/agent-layer): the public ones only.
-    const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
+    const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
     const page = (req, res, o, status = 200) => send(res, status, { viewer: req.viewer, config, path: req.originalUrl, agentLayer: TWIN_PATH_RE.test(String(req.path || '/').split('?')[0]), llms: '/llms.txt', ...o });
     const signedIn = (req) => req.viewer && req.viewer.kind === 'user' && req.viewer.subject;
     const coinsUi = { coinsEnabled: coins.enabled, dailyCap: config.coins.dailyCap, globalDailyCap: config.coins.globalDailyCap };
@@ -79,50 +82,39 @@ function createPageRoutes(ctx) {
         return value;
     };
     const siteCount = Object.keys(catalog.SITES).length;
-    const countText = (n) => n.toLocaleString('en-US');
+    const siteKey = (domain) => quests.shortSite(domain).toLowerCase();
 
-    /** The figures under the hero: each one only when it has something to say. */
-    // The numbers under the hero: the shared strip (three across on a phone), each with its icon.
-    const statsStrip = (p) => raw(showcase.stats({
-        title: `${SITE_NAME} in numbers`,
-        items: [
-            { value: countText(catalog.all().length), label: `quests on ${siteCount} sites`, icon: 'ov:quest' },
-            p.completions > 0 && { value: countText(p.completions), label: p.completions === 1 ? 'quest finished' : 'quests finished', icon: 'ov:check' },
-            p.people > 0 && { value: countText(p.people), label: p.people === 1 ? 'person with badges' : 'people with badges', icon: 'ov:account' },
-            p.recent > 0 && { value: countText(p.recent), label: 'finished this week', icon: 'ov:history' },
-            coinsUi.coinsEnabled && p.coins > 0 && { value: countText(p.coins), label: 'OpenCoins given', icon: 'ov:tips' },
-        ].filter(Boolean),
-    }));
+    // The numbers under the hero: one strip of the shared kit (kit.stats; it scrolls sideways on a phone instead of
+    // stacking tiles), each only when it has something to say (a zero is left out).
+    const statsStrip = (p) => raw(kit.stats([
+        [catalog.all().length, `quests on ${siteCount} sites`],
+        [Number(p.completions) || 0, Number(p.completions) === 1 ? 'quest finished' : 'quests finished'],
+        [Number(p.people) || 0, Number(p.people) === 1 ? 'person with badges' : 'people with badges'],
+        [Number(p.recent) || 0, 'finished this week'],
+        coinsUi.coinsEnabled ? [Number(p.coins) || 0, 'OpenCoins given'] : null,
+    ].filter(Boolean), { label: `${SITE_NAME} in numbers` }));
 
-    /** The badges people hold most (all time), with the quest that pays each. */
-    const topBadges = (p) => {
-        const top = catalog.all().map((q) => ({ q, n: p.byQuest.get(q.id) || 0 })).filter((x) => x.n > 0)
-            .sort((a, b) => b.n - a.n || a.q.title.localeCompare(b.q.title)).slice(0, 6);
-        if (!top.length) return '';
-        return html`<section class="sc-sec" id="most-earned" aria-labelledby="most-earned-h"><h2 id="most-earned-h">Badges people earn most</h2>
-<p class="sc-lede">How many people hold each badge. Nobody is named: Quest shows counts, never who.</p>
-<ol class="q-top">${top.map(({ q, n }) => html`<li>${quests.medal(q, { earned: true })}<span class="q-top-main"><strong>${q.reward.badge.name}</strong><span>for <a href="/quests/${q.id}">${q.title}</a> on ${siteName(q.site)}</span></span><span class="q-top-n">${countText(n)} ${n === 1 ? 'person' : 'people'}</span></li>`)}</ol></section>`;
-    };
-
-    /** Quests nobody has finished yet (outside a series): the badge is there for the first person. */
-    const firstToFinish = (p) => {
-        const open = catalog.all().filter((q) => !q.series && !(p.byQuest.get(q.id) > 0)).slice(0, 6);
-        if (!open.length) return '';
-        return html`<section class="sc-sec" id="be-first" aria-labelledby="be-first-h"><h2 id="be-first-h">Nobody has these badges yet</h2>
-<p class="sc-lede">Quests no one has finished so far. Be the first to hold the badge.</p>
-<ul class="q-open">${open.map((q) => html`<li>${quests.medal(q)}<span><a href="/quests/${q.id}">${q.title}</a><small>${siteName(q.site)} · Badge: ${q.reward.badge.name}</small></span></li>`)}</ul></section>`;
-    };
+    /**
+     * What the home offers as cards: every quest outside a series and each series as one, in the catalog's site order,
+     * with how many hold its badge (a series: the badges earned across it). Counts only, never who.
+     */
+    const homeEntries = (p) => catalog.grouped({ fold: true }).flatMap((g) => [
+        ...g.quests.map((q) => ({ q, n: p.byQuest.get(q.id) || 0 })),
+        ...(g.series || []).map((x) => ({ x, n: x.quests.reduce((sum, q) => sum + (p.byQuest.get(q.id) || 0), 0) })),
+    ]);
+    const entryCard = (e) => (e.x ? quests.seriesKitCard(e.x, { earned: e.n }) : quests.kitCard(e.q, { coinsEnabled: coinsUi.coinsEnabled, earned: e.n }));
 
     /** Which sites Quest follows and the events each reports: the whole of what moves a quest. */
-    const sitesFollowed = () => {
+    const followed = () => {
         const bySite = new Map();
         for (const e of catalog.EVENTS) {
             if (e.counted === false) continue;
             if (!bySite.has(e.site)) bySite.set(e.site, []);
             bySite.get(e.site).push(e.event_type);
         }
-        return html`<ul class="q-sites">${[...bySite].map(([site, events]) => html`<li><a href="https://${site}">${siteName(site)}</a><small>${(catalog.SITES[site] || {}).what || ''}</small><span>${events.map((ev, i) => html`${i ? ' ' : ''}<code>${ev}</code>`)}</span></li>`)}</ul>`;
+        return bySite;
     };
+    const sitesFollowed = () => html`<ul class="q-sites">${[...followed()].map(([site, events]) => html`<li><a href="https://${site}">${siteName(site)}</a><small>${(catalog.SITES[site] || {}).what || ''}</small><span>${events.map((ev, i) => html`${i ? ' ' : ''}<code>${ev}</code>`)}</span></li>`)}</ul>`;
 
     const FAQ = [
         { q: 'What is OpenVibe.Quest?', a: `One quest log for the OpenVibe sites. It counts what you really do on ${siteCount} of them, like going live, posting in the forum or publishing a world, and pays a badge for each quest you finish.` },
@@ -133,9 +125,13 @@ function createPageRoutes(ctx) {
         { q: 'Can developers add quests?', a: 'Yes. A developer app defines quests on its own events with an app token through the OpenVibe SDK. They pay a badge named for the app, never OpenCoins.' },
     ];
 
+    // The home is a taste and a door (owner 2026-10-28: "act more like an app, not a huge long web page"): the hero,
+    // one strip of numbers, the quests as rails of cards with See all → /quests and the sites as quick filters, and
+    // the parts read once (how it works, what is counted, the questions) as folds. The whole catalog is /quests.
     r.get('/', async (req, res) => {
-        const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(24) : [], pulse()]);
+        const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse()]);
         const site = String(config.baseUrl).replace(/\/+$/, '');
+        const total = catalog.all().length;
         // The navbar already says OpenVibe.Quest: the hero says what you get, in plain words, and where to start.
         const hero = showcase.hero({
             eyebrow: { icon: 'ov:quest', text: 'Free, nothing to install' },
@@ -143,10 +139,18 @@ function createPageRoutes(ctx) {
             accent: 'for what you already do on OpenVibe.',
             lede: `Go live, post in the forum, publish a world: every quest you finish on any of ${siteCount} OpenVibe sites earns a badge${coinsUi.coinsEnabled ? ' and OpenCoins' : ''}. One quest log follows you everywhere.`,
             actions: signedIn(req)
-                ? [{ label: 'Your quest log', href: '/me', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '#the-quests', icon: 'ov:search' }]
-                : [{ label: 'Start earning', href: '/auth/login?next=%2Fme', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '#the-quests', icon: 'ov:search' }],
+                ? [{ label: 'Your quest log', href: '/me', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '/quests', icon: 'ov:search' }]
+                : [{ label: 'Start earning', href: '/auth/login?next=%2Fme', primary: true, icon: 'ov:quest' }, { label: 'Browse quests', href: '/quests', icon: 'ov:search' }],
             note: 'Badges, items and OpenCoins: loyalty points, never money. Open source (AGPL-3.0).',
         });
+        // The first rail: what people finish most (the easy starts), then the rest in the catalog's order; the second:
+        // the quests nobody has finished yet that the first one left out. Twelve each at most; /quests has them all.
+        const entries = homeEntries(p);
+        const first = entries.map((e, i) => ({ e, i })).sort((a, b) => b.e.n - a.e.n || a.i - b.i).slice(0, 12).map(({ e }) => e);
+        const open = entries.filter((e) => e.q && e.n === 0 && !first.includes(e)).slice(0, 12);
+        const kinds = catalog.grouped().map((g) => ({ key: siteKey(g.site), label: quests.shortSite(g.site), count: g.quests.length + (g.series || []).reduce((n, x) => n + x.quests.length, 0) }));
+        const events = [...followed()].reduce((n, [, list]) => n + list.length, 0);
+        const fold = (o) => raw(kit.fold({ ...o, body: String(o.body) }));
         page(req, res, {
             index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,
             title: 'Earn badges for what you do on OpenVibe',
@@ -159,46 +163,36 @@ function createPageRoutes(ctx) {
                 ], { url: `${site}/` }),
                 seo.jsonLd.faq(FAQ),
             ],
-            styles: [showcase.STYLESHEET],
+            // The kit's controls (numbers, filters, folds) and its cards and rails; no kit-web.js: the cards carry no
+            // menu, and from 760 px the rails wrap into a grid instead of scrolling (public/css/app.css).
+            styles: KIT_STYLES,
             body: html`${raw(hero)}
-${yourStuff(req)}
 ${statsStrip(p)}
-${topBadges(p)}
-${raw(showcase.features({
-                title: 'What Quest is',
-                lede: `One quest log across ${siteCount} OpenVibe sites, built on what the sites already tell the network.`,
-                items: [
-                    { icon: 'ov:page', title: 'One log, many sites', text: 'A stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat: the same log, grouped by the site the event came from.' },
-                    { icon: 'ov:account', title: 'Rewards are badges', text: coinsUi.coinsEnabled ? 'A quest pays a badge that shows on your profile across the network, and OpenCoins into your OpenVibe.Network wallet.' : 'A quest pays a badge that shows on your profile across the network and, once they are switched on, OpenCoins.' },
-                    { icon: 'ov:tools', title: 'OpenCoins, not Vibes', text: 'OpenCoins are loyalty points credited through OpenVibe.Network\'s wallet. They are never money, they are not Vibes, and Vibes are never touched here.' },
-                    { icon: 'ov:games', title: 'Made by apps', text: 'A developer app defines quests on its own events with an app token (the SDK\'s quests): they pay a badge named for the app, never OpenCoins.' },
-                ],
-            }))}
-<section class="sc-sec" id="the-quests" aria-labelledby="the-quests-h"><h2 id="the-quests-h">The quests</h2>
-<p class="sc-lede">Every quest below counts something a person really did on an OpenVibe site, grouped by the site whose events it counts.</p>
-${quests.list(catalog.grouped({ fold: true }), { ...coinsUi, counts: p.byQuest })}
-${quests.coinsNote(coinsUi)}</section>
-${firstToFinish(p)}
-${appList.length ? html`<section class="sc-sec" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
-<p class="sc-lede">Quests that developer apps on OpenVibe define on their own events. Each pays a badge named for the app, never OpenCoins.</p>
-<ul class="quest-list">${appList.map((q) => html`<li class="quest-card"><h3><a href="/apps/quests/${q.id}">${q.title}</a></h3>${q.why ? html`<p>${q.why}</p>` : ''}<p class="muted">Badge: ${q.reward.badge.name}${q.url ? html` · <a href="${q.url}" rel="nofollow noopener">Where to do it</a>` : ''}</p></li>`)}</ul></section>` : ''}
-${raw(showcase.steps({
-                id: 'how-progress-works',
-                title: 'How quests work across sites',
-                lede: 'Quest does not watch you and runs no activities of its own. It counts what the sites already report.',
-                items: [
-                    { title: 'You do something on a site', text: 'Go live on OpenVibe.Live, reply in a forum thread, publish a creator world on OpenVibe.Games.' },
-                    { title: 'The site reports it', text: 'The site sends the event it already emits to OpenVibe.Events, with the person named by the event\'s own schema.' },
-                    { title: 'Quest counts it', text: 'One count per real action. When every step of a quest reaches its count, the quest is complete, once.' },
-                    { title: 'You get the reward', text: 'The badge goes on your profile, an item goes to your inventory where the quest gives one, and OpenCoins go to your wallet.' },
-                ],
-            }))}
-<section class="sc-sec" aria-labelledby="sites-followed-h"><h2 id="sites-followed-h">The sites Quest follows</h2>
-<p class="sc-lede">These events are the whole of what moves a quest. Nothing else is tracked: no page views, no clicks, no watch time and no content you wrote.</p>
-${sitesFollowed()}
-<p class="sc-note">What each event means is on <a href="/how-it-works">How it works</a>, with what is stored and what is public.</p></section>
-<section class="sc-sec" id="questions" aria-labelledby="questions-h"><h2 id="questions-h">Questions</h2>
-<div class="q-faq">${FAQ.map((f) => html`<details><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div></section>
+${yourStuff(req)}
+<section class="sc-sec q-rails">
+${raw(kit.rail({ id: 'the-quests', title: first.some((e) => e.n > 0) ? 'Badges people earn most' : 'Quests to start with', more: { href: '/quests', label: `See all ${total}` }, items: first.map(entryCard) }))}
+<p class="q-kinds-h" aria-hidden="true">Quests by site</p>
+${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', items: kinds }))}
+${raw(kit.rail({ id: 'be-first', title: 'Nobody has these badges yet', items: open.map(entryCard) }))}
+${raw(kit.rail({ id: 'app-quests', title: 'Made by apps', more: { href: '/quests#app-quests', label: 'See all' }, items: appList.map(quests.appKitCard) }))}
+</section>
+<section class="sc-sec q-folds" id="how-it-works" aria-labelledby="how-it-works-h"><h2 id="how-it-works-h">How it works</h2>
+<p class="sc-lede">Quest runs no activities of its own: it counts what the sites already report, one count per real action. Nothing else is tracked: no page views, no clicks, no watch time and no content you wrote.</p>
+${fold({ id: 'how-progress-works', title: 'From what you do to a badge', meta: '4 steps', body: html`<ol class="q-steps">
+<li><strong>You do something on a site.</strong> Go live on OpenVibe.Live, reply in a forum thread, publish a creator world on OpenVibe.Games.</li>
+<li><strong>The site reports it.</strong> The site sends the event it already emits to OpenVibe.Events, with the person named by the event's own schema.</li>
+<li><strong>Quest counts it.</strong> One count per real action. When every step of a quest reaches its count, the quest is complete, once.</li>
+<li><strong>You get the reward.</strong> The badge goes on your profile, an item goes to your inventory where the quest gives one, and OpenCoins go to your wallet.</li>
+</ol>` })}
+${fold({ id: 'rewards', title: 'Badges, items and OpenCoins', body: html`<p>One log, many sites: a stream on OpenVibe.Live, a thread on OpenVibe.Community, a message in OpenVibe.Chat, grouped by the site the event came from.</p>
+<p>${coinsUi.coinsEnabled ? 'A quest pays a badge that shows on your profile across the network, and OpenCoins into your OpenVibe.Network wallet.' : 'A quest pays a badge that shows on your profile across the network and, once they are switched on, OpenCoins.'} Some quests also give an item for your OpenVibe inventory, worn in chat and on your profile.</p>
+<p>OpenCoins are loyalty points credited through OpenVibe.Network's wallet. They are never money, they are not Vibes, and Vibes are never touched here. A quest a developer app defines on its own events pays a badge named for the app, never OpenCoins.</p>
+${quests.coinsNote(coinsUi)}` })}
+${fold({ id: 'sites-followed', title: 'The sites Quest follows', meta: `${followed().size} sites, ${events} events`, body: html`${sitesFollowed()}
+<p class="sc-note">What each event means is on <a href="/how-it-works">How it works</a>, with what is stored and what is public.</p>` })}
+</section>
+<section class="sc-sec q-folds" id="questions" aria-labelledby="questions-h"><h2 id="questions-h">Questions</h2>
+${FAQ.map((f) => fold({ title: f.q, body: html`<p>${f.a}</p>` }))}</section>
 ${raw(showcase.network({ service: 'quest' }))}
 ${raw(showcase.cta({
                 title: signedIn(req) ? 'Your quest log is waiting' : 'Start your quest log',
@@ -208,12 +202,51 @@ ${raw(showcase.cta({
         });
     });
 
+    // ── Every quest: the index the home's See all opens, one site at a time (?site=), as the kit's tabs ──
+    r.get('/quests', async (req, res) => {
+        const groups = catalog.grouped({ fold: true });
+        const keys = ['all', ...groups.map((g) => siteKey(g.site))];
+        const active = kit.tabOf(req.query, keys, 'site');
+        const shown = active === 'all' ? groups : groups.filter((g) => siteKey(g.site) === active);
+        const [appList, p] = await Promise.all([active === 'all' && ctx.appQuests ? ctx.appQuests.listed(100) : [], pulse()]);
+        const count = (g) => g.quests.length + (g.series || []).reduce((n, x) => n + x.quests.length, 0);
+        const total = catalog.all().length;
+        const one = active === 'all' ? null : shown[0];
+        page(req, res, {
+            index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,
+            title: one ? `Quests on ${one.name}` : 'All quests',
+            description: one
+                ? `The ${count(one)} quest${count(one) === 1 ? '' : 's'} on ${one.name}: what each one counts and the badge it pays.`
+                : `All ${total} OpenVibe quests on ${siteCount} sites, grouped by site: what each one counts, the badge it pays and how many people hold it.`,
+            crumbs: [{ label: 'Quests', href: '/' }, { label: one ? one.name : 'All quests' }],
+            styles: ['kit.css'],
+            body: html`<h1>${one ? html`Quests on ${one.name}` : 'All quests'}</h1>
+<p class="lede">${one ? html`${count(one)} quest${count(one) === 1 ? '' : 's'} on <a href="https://${one.site}">${one.name}</a>${one.what ? html`, ${one.what}` : ''}.` : html`${total} quests on ${siteCount} OpenVibe sites, grouped by the site whose events each one counts.`} Each pays a badge; how many people hold it is a count, never who.</p>
+${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', active, items: [{ key: 'all', label: 'All', count: total, href: '/quests' }, ...groups.map((g) => ({ key: siteKey(g.site), label: quests.shortSite(g.site), count: count(g) }))] }))}
+${quests.list(shown, { ...coinsUi, counts: p.byQuest })}
+${appList.length ? html`<section class="site-group" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
+<p class="muted">Quests that developer apps on OpenVibe define on their own events. Each pays a badge named for the app, never OpenCoins.</p>
+<ul class="quest-list">${appList.map((q) => quests.appCard(q))}</ul></section>` : ''}
+${quests.coinsNote(coinsUi)}
+<p><a href="/">Quests home</a> · <a href="/how-it-works">How it works</a></p>`,
+        });
+    });
+
+    // ── A badge's picture (render/badge-art.js): the home's cards show the badge each quest pays ──
+    const sendSvg = (req, res, body) => res.status(200).type('image/svg+xml').set('Cache-Control', cache.assetHeaders(req.path, { maxAge: 86400 })).send(body);
+    r.get('/quests/:id/badge.svg', (req, res, next) => { const q = catalog.byId(req.params.id); return q ? sendSvg(req, res, quests.badgeSvg(q)) : next(); });
+    r.get('/series/:id/badge.svg', (req, res, next) => { const x = catalog.seriesById(req.params.id); return x ? sendSvg(req, res, quests.seriesSvg(x)) : next(); });
+    r.get('/apps/quests/:id/badge.svg', async (req, res, next) => {
+        const q = ctx.appQuests ? await ctx.appQuests.byId(req.params.id) : null;
+        return q && q.env === 'production' && q.status === 'active' ? sendSvg(req, res, quests.badgeSvg(q)) : next();
+    });
+
     // ── An app quest (server/quests/app-quests.js) ──────────
     r.get('/apps/quests/:id', async (req, res) => {
         const quest = ctx.appQuests ? await ctx.appQuests.byId(req.params.id) : null;
         if (!quest || quest.env !== 'production') return page(req, res, {
             title: 'No such quest',
-            body: html`<h1>No such quest</h1><p>There is no app quest at this address. <a href="/#app-quests">Quests made by apps</a> lists them.</p>`,
+            body: html`<h1>No such quest</h1><p>There is no app quest at this address. <a href="/quests#app-quests">Quests made by apps</a> lists them.</p>`,
         }, 404);
         const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
         const [rows, completion, holders] = await Promise.all([
@@ -225,7 +258,7 @@ ${raw(showcase.cta({
         return page(req, res, {
             index: quest.status === 'active', cache: mine ? null : PUBLIC_CACHE,
             title: quest.title, description: quest.why || `${quest.title}: a quest an OpenVibe app made.`,
-            crumbs: [{ label: 'Quests', href: '/' }, { label: 'Made by apps', href: '/#app-quests' }, { label: quest.title }],
+            crumbs: [{ label: 'Quests', href: '/' }, { label: 'Made by apps', href: '/quests#app-quests' }, { label: quest.title }],
             body: html`<h1>${quest.title}</h1>
 ${quest.why ? html`<p class="lede">${quest.why}</p>` : ''}
 <p class="muted">Made by an OpenVibe developer app (project <code>${quest.project_id}</code>)${quest.url ? html` · <a href="${quest.url}" rel="nofollow noopener">Where to do it</a>` : ''}.${quest.status === 'retired' ? ' Retired: it no longer counts.' : ''}</p>
@@ -235,7 +268,7 @@ ${quest.why ? html`<p class="lede">${quest.why}</p>` : ''}
 <p>The badge <strong>${quest.reward.badge.name}</strong>. App quests never pay OpenCoins.</p>
 <p class="muted">${holders ? html`${holders} ${holders === 1 ? 'person has' : 'people have'} this badge.` : 'A badge is awarded once and kept.'}</p>
 ${completion ? html`<div class="notice" role="status">You completed this quest on <strong>${String(completion.completed_at).slice(0, 10)}</strong>.</div>` : ''}
-<p><a href="/">All quests</a></p>`,
+<p><a href="/quests">All quests</a></p>`,
         });
     });
 
@@ -244,7 +277,7 @@ ${completion ? html`<div class="notice" role="status">You completed this quest o
         const quest = catalog.byId(req.params.id);
         if (!quest) return page(req, res, {
             title: 'No such quest',
-            body: html`<h1>No such quest</h1><p>There is no quest at this address. <a href="/">The quest list</a> has all ${catalog.all().length} of them.</p>`,
+            body: html`<h1>No such quest</h1><p>There is no quest at this address. <a href="/quests">The quest list</a> has all ${catalog.all().length} of them.</p>`,
         }, 404);
 
         const viewer = req.viewer;
@@ -273,7 +306,7 @@ ${completion ? html`<div class="notice" role="status">You completed this quest o
 <p class="muted">${state && state.holders ? html`${state.holders} ${state.holders === 1 ? 'person has' : 'people have'} this badge.` : html`A badge is awarded once and kept.`}</p>
 ${state && state.completion ? html`<div class="notice" role="status">You completed this quest on <strong>${String(state.completion.completed_at).slice(0, 10)}</strong>${coinsUi.coinsEnabled && state.completion.coins_state === 'credited' ? html`, and its OpenCoins are in your wallet` : ''}.</div>` : html`<p><a href="/me">Your quest log</a> keeps your progress.</p>`}
 ${quests.coinsNote(coinsUi)}
-<p><a href="/">All quests</a></p>`,
+<p><a href="/quests">All quests</a></p>`,
         }));
     });
 
@@ -282,7 +315,7 @@ ${quests.coinsNote(coinsUi)}
         const series = catalog.seriesById(req.params.id);
         if (!series) return page(req, res, {
             title: 'No such series',
-            body: html`<h1>No such series</h1><p>There is no quest series at this address. <a href="/">The quest list</a> has every quest.</p>`,
+            body: html`<h1>No such series</h1><p>There is no quest series at this address. <a href="/quests">The quest list</a> has every quest.</p>`,
         }, 404);
         const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
         const done = new Set(mine ? (await store.completionsFor(s.db, req.viewer.subject)).map((c) => c.quest_id) : []);
@@ -298,7 +331,7 @@ ${quests.coinsNote(coinsUi)}
 ${mine ? quests.progress('Your progress', finished, series.quests.length) : ''}
 <ul class="quest-list">${series.quests.map((q) => quests.card(q, { ...coinsUi, earned: done.has(q.id) }))}</ul>
 ${quests.coinsNote(coinsUi)}
-<p><a href="/">All quests</a>${mine ? html` · <a href="/me">Your quest log</a>` : ''}</p>`,
+<p><a href="/quests">All quests</a>${mine ? html` · <a href="/me">Your quest log</a>` : ''}</p>`,
         });
     });
 
@@ -322,7 +355,7 @@ ${quests.coinsNote(coinsUi)}
 each quest still needs, and the badges you have earned.</p>
 <p><a href="/auth/login?next=%2Fme">Sign in with OpenVibe</a></p>
 <p class="muted">Your progress is read from this site's database only, and only for you. Nobody else's log is shown here, and yours is not shown on anyone else's.</p>
-<p><a href="/how-it-works">How progress works</a> · <a href="/">The quests</a></p>`,
+<p><a href="/how-it-works">How progress works</a> · <a href="/quests">The quests</a></p>`,
         });
 
         const subject = req.viewer.subject;
@@ -353,7 +386,7 @@ ${yourStuff(req)}
 <h2>In progress</h2>
 ${started.length ? started.map((q) => html`<section class="quest-block"><h3><a href="/quests/${q.id}">${q.title}</a> <small>on ${siteName(q.site)}</small></h3>
 ${q.steps.map((step, i) => quests.progress(step.label, (seen.get(q.id) || new Map()).get(i) || 0, step.count))}
-<p class="quest-reward">${quests.reward(q, coinsUi)}</p></section>`) : html`<p class="muted">Nothing started yet. <a href="/">Pick a quest</a> — any of the sites you already use counts.</p>`}
+<p class="quest-reward">${quests.reward(q, coinsUi)}</p></section>`) : html`<p class="muted">Nothing started yet. <a href="/quests">Pick a quest</a> — any of the sites you already use counts.</p>`}
 <h2>Completed</h2>
 ${finished.length ? html`<ul class="quest-list">${finished.map((q) => {
                 const c = done.get(q.id);
@@ -424,7 +457,7 @@ them (ADR-033).</li>
 <li>When two of your OpenVibe accounts are merged, everything here moves to the account you keep: each step keeps the
 higher count, a quest both finished counts once, and each badge keeps its first award (ADR-029).</li>
 </ul>
-<p><a href="/">The quests</a> · <a href="/updates">What shipped</a></p>`,
+<p><a href="/quests">The quests</a> · <a href="/updates">What shipped</a></p>`,
     }));
 
     // ── The update log ───────────────────────────────────────

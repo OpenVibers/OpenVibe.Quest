@@ -20,7 +20,8 @@ const DISALLOW = ['/auth/', '/api/', '/me'];
 
 // One line per public page for llms-full.txt. /me is not here: it is a person's own log, never crawled.
 const PAGE_TEXT = {
-    '/': ['OpenVibe.Quest home', 'OpenVibe.Quest: Quests across the whole network. The quests, grouped by the site whose events each one counts.'],
+    '/': ['OpenVibe.Quest home', 'OpenVibe.Quest: Quests across the whole network. The badges people earn most, the ones nobody holds yet, and how quests work.'],
+    '/quests': ['All quests', 'Every OpenVibe quest, grouped by the site whose events each one counts, with the badge it pays and how many people hold it.'],
     '/how-it-works': ['How quests work', 'What OpenVibe.Quest counts, what it stores, and what its rewards are — badges and OpenCoins, never money and never Vibes.'],
     '/updates': ['What shipped on OpenVibe.Quest', 'This site\'s update log, from the network changelog feed.'],
     ...Object.fromEntries(Object.values(catalog.SERIES).map((x) => [`/series/${x.id}`, [x.title, `${x.why} On ${(catalog.SITES[x.site] || {}).name || x.site}.`]])),
@@ -46,6 +47,7 @@ function homeJsonLd(config) {
 
 const publicPages = () => [
     { path: '/', changefreq: 'weekly', priority: 1.0 },
+    { path: '/quests', changefreq: 'weekly', priority: 0.8 },
     { path: '/how-it-works', changefreq: 'monthly', priority: 0.6 },
     ...Object.values(catalog.SERIES).map((x) => ({ path: `/series/${x.id}`, changefreq: 'monthly', priority: 0.7 })),
     ...catalog.all().map((q) => ({ path: `/quests/${q.id}`, changefreq: 'monthly', priority: 0.7 })),
@@ -73,6 +75,7 @@ function createDiscoveryRoutes(ctx) {
             sections: [
                 { title: 'Start here', links: [
                     { title: 'OpenVibe.Quest', url: abs('/'), note: 'Quests across the whole network.' },
+                    { title: 'All quests', url: abs('/quests'), note: 'every quest, grouped by site' },
                     { title: 'How quests work', url: abs('/how-it-works'), note: 'what is counted, what is stored, and the rewards' },
                     { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
                     { title: 'What shipped on OpenVibe.Quest', url: abs('/updates') },

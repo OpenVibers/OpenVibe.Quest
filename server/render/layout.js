@@ -84,6 +84,8 @@ function renderPage(o) {
         description: o.description || `${SITE_NAME} — ${TAGLINE}`,
         canonical,
         robots: o.index ? 'index, follow' : 'noindex, nofollow',
+        agentLayer: o.agentLayer,
+        llms: o.llms,
         jsonLd: (o.jsonLd || []).filter(Boolean),
         home: '/',
         navLinks: NAV,
@@ -121,6 +123,11 @@ function send(res, status, o) {
     const personal = o.viewer && o.viewer.kind === 'user';
     if (!res.get('Cache-Control')) res.set('Cache-Control', !personal && o.cache ? o.cache : cache.htmlHeaders({ private: true }));
     res.set('Vary', 'Cookie');
+    // The page names its Markdown twin (openvibe-shared/agent-layer) and the site's llms.txt.
+    if (o.agentLayer) {
+        const canonical = `${o.config.baseUrl}${String(o.path || '/').split('?')[0]}`;
+        res.set('Link', require('openvibe-shared/agent-layer').linkHeaderTags(canonical, `${o.config.baseUrl}/llms.txt`).header);
+    }
     res.status(status).type('html').send(renderPage(o));
 }
 

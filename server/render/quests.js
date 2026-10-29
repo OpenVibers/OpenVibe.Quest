@@ -5,7 +5,9 @@
  * site, a progress bar and the OpenCoins note. Plain HTML, no JavaScript, every value through the html`` template
  * (escaping); the catalog is code, but nothing here assumes its text is harmless.
  */
+const kit = require('openvibe-shared/kit');
 const catalog = require('../quests/catalog');
+const art = require('./badge-art');
 const { html } = require('./html');
 
 /**
@@ -32,10 +34,48 @@ function hueOf(id) {
 
 /** The badge as a medal: its initials on a ring of its colour (decorative; the name is always written beside it). */
 function medal(quest, { earned = false } = {}) {
-    const words = String(quest.reward.badge.name || quest.title).split(/\s+/).filter(Boolean);
-    const initials = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
-    return html`<span class="medal${earned ? ' earned' : ''}" style="--h:${hueOf(quest.id)}" aria-hidden="true">${initials}</span>`;
+    return html`<span class="medal${earned ? ' earned' : ''}" style="--h:${hueOf(quest.id)}" aria-hidden="true">${art.initials(quest.reward.badge.name || quest.title)}</span>`;
 }
+
+// ── The home's cards: a quest, a series or an app's quest as the shared kit's card (openvibe-shared kit.card), its
+// picture the badge it pays (render/badge-art.js). The card is one link; nothing in it needs kit-web.js (no ⋯ menu).
+const shortSite = (domain) => String((catalog.SITES[domain] || {}).name || domain).replace(/^OpenVibe\./, '');
+
+/** A catalog quest: the site it happens on, its item or OpenCoins in the corner, how many hold its badge. */
+function kitCard(quest, { coinsEnabled = false, earned = 0 } = {}) {
+    const it = quest.reward.item;
+    return kit.card({
+        href: `/quests/${quest.id}`, title: quest.title, ratio: '16/9', share: false,
+        image: `/quests/${encodeURIComponent(quest.id)}/badge.svg`, alt: `The ${quest.reward.badge.name} badge`,
+        badge: shortSite(quest.site),
+        corner: it ? `+ ${it.name}` : coinsEnabled && quest.reward.coins > 0 ? `${quest.reward.coins} OpenCoins` : '',
+        peek: quest.why,
+        count: earned > 0 ? [earned, 'earned'] : null,
+    });
+}
+
+/** A series: one card for all its quests, opening the series' page. */
+function seriesKitCard(series, { earned = 0 } = {}) {
+    return kit.card({
+        href: `/series/${series.id}`, title: series.title, ratio: '16/9', share: false,
+        image: `/series/${encodeURIComponent(series.id)}/badge.svg`, alt: `${series.quests.length} badges, one for each quest`,
+        badge: shortSite(series.site), peek: series.why,
+        count: earned > 0 ? [earned, earned === 1 ? 'badge earned' : 'badges earned'] : null,
+    });
+}
+
+/** A quest a developer app made (server/quests/app-quests.js): badges only, never OpenCoins. */
+function appKitCard(q) {
+    return kit.card({
+        href: `/apps/quests/${q.id}`, title: q.title, ratio: '16/9', share: false,
+        image: `/apps/quests/${encodeURIComponent(q.id)}/badge.svg`, alt: `The ${q.reward.badge.name} badge`,
+        badge: 'App', peek: q.why || '',
+    });
+}
+
+/** The SVG for a badge card (render/badge-art.js): a quest's, a series' (its count on the medal) or an app quest's. */
+const badgeSvg = (quest) => art.svg({ hue: hueOf(quest.id), mark: art.initials(quest.reward.badge.name || quest.title), name: quest.reward.badge.name });
+const seriesSvg = (series) => art.svg({ hue: hueOf(series.id), mark: String(series.quests.length), name: `${series.quests.length} quests, a badge each` });
 
 /** "Earned by 3 people": how many have a quest's badge (a count, never who), or nothing at 0. */
 function earnedBy(n) {
@@ -72,6 +112,19 @@ function seriesCard(series, { coinsEnabled = false, counts = null } = {}) {
 </li>`;
 }
 
+/** A quest a developer app made, in a list (the full index, /quests): its badge, what it is, and where to do it. */
+function appCard(q) {
+    return html`<li class="quest">
+    ${medal(q)}
+    <div class="quest-main">
+    <a class="quest-title" href="/apps/quests/${q.id}">${q.title}</a>
+    ${q.why ? html`<p class="quest-why">${q.why}</p>` : ''}
+    <p class="quest-reward"><span class="reward"><span class="reward-badge">Badge: <strong>${q.reward.badge.name}</strong></span></span></p>
+    ${q.url ? html`<p class="quest-count"><a href="${q.url}" rel="nofollow noopener">Where to do it</a></p>` : ''}
+    </div>
+</li>`;
+}
+
 /** The catalog grouped by the site whose events each quest counts (a folded catalog shows each series as one card). */
 function list(groups = catalog.grouped(), { coinsEnabled = false, counts = null } = {}) {
     // The heading id is the domain with its dots replaced: an id with a dot is legal but awkward to target.
@@ -102,4 +155,4 @@ ${dailyCap} OpenCoins per person per day and ${globalDailyCap} for everyone toge
 never money — and never Vibes.</p>`;
 }
 
-module.exports = { medal, hueOf, reward, card, seriesCard, list, progress, coinsNote };
+module.exports = { medal, hueOf, reward, card, seriesCard, appCard, list, progress, coinsNote, kitCard, seriesKitCard, appKitCard, badgeSvg, seriesSvg, shortSite };

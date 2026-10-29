@@ -21,14 +21,14 @@ const BUDGETS = {
     // Raised 2026-10-22 with the rich home: figures under the hero, the most-earned badges, each card's "earned by",
     // the badges nobody holds yet, the sites Quest follows, a FAQ and the quests as ItemList + FAQPage JSON-LD.
     // Measured 54.3 KB raw / 10.6 KB brotli on a fresh database.
-    htmlRawKB: 69,   // 67.5 the hero's and the numbers' icons (inline ring icons, 2026-10-28); 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
+    htmlRawKB: 65,   // 58.6 the home a taste and a door (2026-10-29): rails of kit cards and folds instead of every quest card and the sites list; 67.5 the hero's and the numbers' icons (inline ring icons, 2026-10-28); 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
     htmlBrotliKB: 13,   // 11.8 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; 10.6
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 305,   // 300.5 openvibe-shared 4.25.0: the menu's orb beside the brand, both balances on phones, messages, the account sheet on phones and the bar stepping away on phones; 293 openvibe-shared 4.22.0: the navbar's magnifier search button and More dropdown (search.js and loading.js load only when used); 287.2 Shared 4.17.0: OpenCoins and Vibes chips (wallet: true) in the navbar; 273.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; 264.3 with Shared 4.13.0 (2026-10-26: account links); 239.8
     jsBrotliKB: 76,   // 74.2 openvibe-shared 4.25.0: the menu's orb beside the brand, both balances on phones, messages, the account sheet on phones and the bar stepping away on phones; 70.5 Shared 4.17.0: OpenCoins and Vibes chips (wallet: true) in the navbar; 67.9 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; 65.3 Shared 4.12.0: the light/dark switch, the seasonal mark and the theme pairs; 56.5
-    cssFiles: 2,   // 2 (app.css + the cached /shared/showcase.css)
-    cssRawKB: 39,   // 34.4 openvibe-shared 4.26.1 (hero visual); 28.9 with Shared 4.13.0 (2026-10-26: account links); 22.6 with the quest medals and cards, and the home's figures, badges, sites and FAQ (2026-10-22)
-    cssBrotliKB: 8,   // 6.2 with Shared 4.13.0 (2026-10-26: account links); 4.6
+    cssFiles: 4,   // 4 (2026-10-29: + /shared/kit.css and /shared/room.css, the kit's numbers, filters, folds, cards and rails); 2 (app.css + the cached /shared/showcase.css)
+    cssRawKB: 82,   // 73.9 the home on the shared kit (2026-10-29): kit.css 25.3 KB (numbers strip, site filters, folds) and room.css 15.7 KB (the quests as rails of cards), app.css down 1.5 KB; the page shed 13 of its 17 phone screens; 34.4 openvibe-shared 4.26.1 (hero visual); 28.9 with Shared 4.13.0 (2026-10-26: account links); 22.6 with the quest medals and cards, and the home's figures, badges, sites and FAQ (2026-10-22)
+    cssBrotliKB: 18,   // 16.2 kit.css and room.css on the home (2026-10-29, see cssRawKB); 6.2 with Shared 4.13.0 (2026-10-26: account links); 4.6
     externalFiles: 0,   // 0
 };
 

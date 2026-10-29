@@ -114,7 +114,7 @@ const { render } = require('../server/render/html');
         });
 
         await check('every page is server-rendered, complete without JavaScript, and answers 200', async () => {
-            for (const p of ['/', '/how-it-works', '/quests/go-live', '/updates']) {
+            for (const p of ['/', '/quests', '/quests?site=chat', '/how-it-works', '/quests/go-live', '/updates']) {
                 const r = await t.get(p);
                 assert.strictEqual(r.status, 200, p);
                 assert.match(r.headers.get('content-type'), /^text\/html/, p);
@@ -127,17 +127,42 @@ const { render } = require('../server/render/html');
             assert.ok(quest.text.includes('First Broadcast'), 'its badge');
             assert.ok(quest.text.includes('OpenCoins rewards start soon'), 'coins are honestly off');
             const home = await t.get('/');
-            assert.ok(home.text.includes('OpenVibe.Live'), 'the quests are grouped by site');
-            assert.ok(home.text.includes('Say hello in chat'), 'a chat quest is listed');
-            assert.ok(home.text.includes('chat.room.message.created'), 'the events are listed');
+            // The home is a taste and a door: the quests as rails of the shared kit's cards (each with its badge's
+            // picture), See all → the index, the sites as quick filters, and the parts read once as folds.
+            assert.ok(home.text.includes('class="ovk-rail') && home.text.includes('class="ovk-card'), 'the quests as a rail of cards');
+            assert.ok(home.text.includes(`href="/quests">See all ${catalog.all().length}`), 'See all opens the index');
+            assert.ok(home.text.includes('src="/quests/go-live/badge.svg"'), 'a card shows the badge it pays');
+            assert.ok(home.text.includes('href="/quests?site=chat"') && home.text.includes('href="/quests?site=live"'), 'the sites as quick filters');
+            assert.ok(/\/shared\/kit\.css/.test(home.text) && /\/shared\/room\.css/.test(home.text) && !/\/shared\/kit-web\.js/.test(home.text), 'the kit\'s look (kit.css, room.css), no kit-web.js');
+            assert.ok(!home.text.includes('class="quest-steps"'), 'no full quest cards on the home: they are the index\'s');
+            for (const id of ['how-progress-works', 'rewards', 'sites-followed']) assert.ok(home.text.includes(`<details class="ovk-fold" id="${id}">`), `${id} is a fold`);
+            assert.ok(home.text.includes('OpenVibe.Live') && home.text.includes('chat.room.message.created'), 'the sites Quest follows and their events, in a fold');
             // The live parts are counts, never people: kim's completion shows as a number and nothing about her.
             assert.ok(home.text.includes('Badges people earn most'), 'the most-earned badges');
-            assert.ok(home.text.includes('Earned by 1 person'), 'a quest card says how many hold its badge');
-            assert.ok(/<dt>quest finished<\/dt><dd><span class="sc-stat-ic">[\s\S]*?<\/span>1<\/dd>/.test(home.text), 'the figures under the hero, each with its icon');
+            assert.ok(/<dt>quest finished<\/dt><dd>1<\/dd>/.test(home.text) && home.text.includes('class="ovk-stats"'), 'the figures under the hero, as one strip');
+            assert.ok(home.text.includes('<span>1 earned</span>'), 'a card says how many hold its badge');
             assert.ok(home.text.includes('Nobody has these badges yet'), 'the quests nobody has finished');
             assert.ok(home.text.includes('"@type":"FAQPage"') && home.text.includes('Can other people see my progress?'), 'the FAQ and its JSON-LD');
             assert.ok(home.text.includes('"@type":"ItemList"'), 'the quests as an ItemList');
             assert.ok(!home.text.includes(kim.subject) && !home.text.includes(kim.username), 'nobody is named');
+            // The index: every quest outside a series and each series as one card, grouped by site, one site per tab.
+            const index = await t.get('/quests');
+            for (const q of catalog.all().filter((x) => !x.series)) assert.ok(index.text.includes(`href="/quests/${q.id}"`), `the index lists ${q.id}`);
+            assert.ok(index.text.includes('href="/series/live-setup"'), 'and the series');
+            assert.ok(index.text.includes('Say hello in chat') && index.text.includes('Earned by 1 person'), 'each card with how many hold its badge');
+            assert.ok(index.text.includes('aria-current="page"><span>All</span>'), 'the All tab is open');
+            assert.ok(!index.text.includes(kim.subject) && !index.text.includes(kim.username), 'nobody is named on the index');
+            const chat = await t.get('/quests?site=chat');
+            assert.ok(chat.text.includes('Say hello in chat') && !chat.text.includes('href="/quests/go-live"'), 'a site tab shows that site\'s quests only');
+            assert.ok(chat.text.includes('<link rel="canonical" href="https://openvibe.quest/quests">'), 'one canonical for every tab');
+            // A badge's picture: an SVG for a quest, a series and nothing else.
+            const svg = await t.get('/quests/go-live/badge.svg');
+            assert.strictEqual(svg.status, 200);
+            assert.match(svg.headers.get('content-type'), /^image\/svg\+xml/);
+            assert.match(svg.headers.get('cache-control') || '', /^public, max-age=86400/);
+            assert.ok(svg.text.startsWith('<svg') && svg.text.includes('>FB<') && svg.text.includes('First Broadcast'), 'the medal and the badge name');
+            assert.strictEqual((await t.get('/series/live-setup/badge.svg')).status, 200);
+            assert.strictEqual((await t.get('/quests/no-such-quest/badge.svg')).status, 404);
             const how = await t.get('/how-it-works');
             assert.ok(how.text.includes('never money'), 'the rules say what rewards are');
             assert.ok(how.text.includes('Vibes'), 'and that they are never Vibes');
@@ -168,6 +193,7 @@ const { render } = require('../server/render/html');
             const sitemap = await t.get('/sitemap.xml');
             for (const q of catalog.all()) assert.ok(sitemap.text.includes(`<loc>https://openvibe.quest/quests/${q.id}</loc>`), `sitemap misses ${q.id}`);
             assert.ok(sitemap.text.includes('<loc>https://openvibe.quest/how-it-works</loc>'));
+            assert.ok(sitemap.text.includes('<loc>https://openvibe.quest/quests</loc>'), 'the index the home\'s See all opens');
             const robots = await t.get('/robots.txt');
             assert.ok(robots.text.includes('Disallow: /me'), 'the private log is not crawled');
             const llms = await t.get('/llms.txt');
@@ -186,6 +212,10 @@ const { render } = require('../server/render/html');
             assert.ok(!cardHtml.includes('<script>') && !cardHtml.includes('<img') && !cardHtml.includes('<b>go</b>'), 'no raw markup from data');
             assert.ok(cardHtml.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), 'escaped, not stripped');
             assert.ok(cardHtml.includes('&lt;i&gt;Badge&lt;/i&gt;'), 'the badge label is escaped too');
+            const kitHtml = renderQuests.kitCard(hostile, { coinsEnabled: true, earned: 2 });
+            assert.ok(!kitHtml.includes('<script>') && kitHtml.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), 'the home\'s card escapes it');
+            const art = renderQuests.badgeSvg(hostile);
+            assert.ok(!art.includes('<i>') && art.includes('&lt;i&gt;Badge&lt;/i&gt;'), 'so does the badge\'s picture');
 
             const page = await t.get('/quests/%3Cscript%3Ealert(1)%3C%2Fscript%3E');
             assert.strictEqual(page.status, 404);

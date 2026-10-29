@@ -154,7 +154,25 @@ async function createApp(opts = {}) {
 
     // ── Pages ───────────────────────────────────────────────
     app.use(rateLimit({ windowMs: 60_000, limit: Number(process.env.QUEST_RATE_LIMIT_PER_MIN) || 300, standardHeaders: true, legacyHeaders: false }));
-    app.use(createPageRoutes(ctx));
+    const pageRoutes = createPageRoutes(ctx);
+    // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json and the Markdown twins of the
+    // public pages. Only the manifest and a twin request reach it — the layer renders every page signed out,
+    // and the site's own routes answer every browser.
+    {
+        const agentRouter = express.Router();
+        require('openvibe-shared/agent-layer').mount(agentRouter, {
+            descriptor: require('./agent-descriptor'),
+            render: require('./agent-pages').createAgentPages({ router: pageRoutes, host: new URL(config.baseUrl).hostname }).renderPublicPage,
+        });
+        app.use((req, res, next) => {
+            if (req.path === '/.well-known/agent.json') return agentRouter(req, res, next);
+            const p = String(req.path || '');
+            if (p.endsWith('.md') || (req.query && req.query.format === 'markdown')
+                || req.accepts(['html', 'text/markdown']) === 'text/markdown') return agentRouter(req, res, next);
+            return next();
+        });
+    }
+    app.use(pageRoutes);
     app.use((req, res) => send(res, 404, { viewer: req.viewer, config, path: req.originalUrl, title: 'Not found', body: html`<h1>Not found</h1><p>No page here. Try <a href="/">the home page</a> or <a href="/updates">the update log</a>.</p>` }));
 
     // eslint-disable-next-line no-unused-vars

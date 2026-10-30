@@ -26,6 +26,7 @@ const { createDiscoveryRoutes, homeJsonLd } = require('./discovery');
 const { html, raw, table } = require('../render/html');
 const { send } = require('../render/layout');
 const quests = require('../render/quests');
+const S = require('../render/short');
 const catalog = require('../quests/catalog');
 const store = require('../quests/store');
 
@@ -128,6 +129,17 @@ function createPageRoutes(ctx) {
     // The home is a taste and a door (owner 2026-10-28: "act more like an app, not a huge long web page"): the hero,
     // one strip of numbers, the quests as rails of cards with See all → /quests and the sites as quick filters, and
     // the parts read once (how it works, what is counted, the questions) as folds. The whole catalog is /quests.
+    /**
+     * The home on a phone (the owner's short-pages rule, 2026-10-30): the parts a reader rarely needs — how it works
+     * and the questions — are folds, closed on a phone and open where there is room. Both stay in the page.
+     */
+    function foldedHome(body) {
+        let html = String(body);
+        html = S.foldSection(html, 'id="how-it-works" aria-labelledby', 'how-it-works-fold');
+        html = S.foldSection(html, 'id="questions" aria-labelledby', 'questions-fold');
+        return html;
+    }
+
     r.get('/', async (req, res) => {
         const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse()]);
         const site = String(config.baseUrl).replace(/\/+$/, '');
@@ -166,7 +178,7 @@ function createPageRoutes(ctx) {
             // The kit's controls (numbers, filters, folds) and its cards and rails; no kit-web.js: the cards carry no
             // menu, and from 760 px the rails wrap into a grid instead of scrolling (public/css/app.css).
             styles: KIT_STYLES,
-            body: html`${raw(hero)}
+            body: raw(foldedHome(html`${raw(hero)}
 ${statsStrip(p)}
 ${yourStuff(req)}
 <section class="sc-sec q-rails">
@@ -198,7 +210,7 @@ ${raw(showcase.cta({
                 title: signedIn(req) ? 'Your quest log is waiting' : 'Start your quest log',
                 text: signedIn(req) ? 'Your progress, your badges, and what each quest still needs.' : 'Sign in with OpenVibe and the sites you already use start counting.',
                 actions: signedIn(req) ? [{ label: 'Your quest log', href: '/me', primary: true }] : [{ label: 'Sign in with OpenVibe', href: '/auth/login?next=%2Fme', primary: true }],
-            }))}`,
+            }))}`)),
         });
     });
 

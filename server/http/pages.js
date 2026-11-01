@@ -147,6 +147,13 @@ function createPageRoutes(ctx) {
         // The navbar already says OpenVibe.Quest: the hero says what you get, in plain words, and where to start.
         const hero = showcase.hero({
             eyebrow: { icon: 'ov:quest', text: 'Free, nothing to install' },
+            // The hero's picture is this site's own (2026-11-01): it drew the generic aura, the same on six homes.
+            // The sites a quest is earned on circle the quest log, each linked.
+            orbit: (() => {
+                const ICON = { 'openvibe.live': 'live', 'openvibe.network': 'network', 'openvibe.community': 'community', 'openvibe.chat': 'chat', 'openvibe.wiki': 'wiki', 'openvibe.games': 'games', 'openvibe.tools': 'tools', 'openvibe.space': 'space', 'openvibe.blog': 'blog', 'openvibe.deals': 'deals', 'openvibe.run': 'run', 'inventory.openvibe.network': 'inventory', 'openvibe.bot': 'bot', 'openvibe.video': 'video', 'openvibe.pics': 'pics' };
+                const sites = Object.entries(catalog.SITES).filter(([host]) => ICON[host]).map(([host, s]) => ({ icon: `ov:${ICON[host]}`, label: s.name.replace(/^OpenVibe\./, ''), href: `https://${host}/` }));
+                return { label: `Quests on ${siteCount} OpenVibe sites`, center: { title: 'Quest log', sub: `${siteCount} sites` }, inner: sites.slice(0, 6), outer: sites.slice(6) };
+            })(),
             title: 'Earn badges',
             accent: 'for what you already do on OpenVibe.',
             lede: `Go live, post in the forum, publish a world: every quest you finish on any of ${siteCount} OpenVibe sites earns a badge${coinsUi.coinsEnabled ? ' and OpenCoins' : ''}. One quest log follows you everywhere.`,

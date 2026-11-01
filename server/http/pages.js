@@ -365,7 +365,7 @@ ${quests.coinsNote(coinsUi)}
             body: html`<h1>Your quest log</h1>
 <p>Quest keeps one log per person, across every site. Sign in with OpenVibe to see yours: what you have done, what
 each quest still needs, and the badges you have earned.</p>
-<p><a href="/auth/login?next=%2Fme">Sign in with OpenVibe</a></p>
+<p><a class="sc-btn sc-primary" href="/auth/login?next=%2Fme">Sign in with OpenVibe</a></p>
 <p class="muted">Your progress is read from this site's database only, and only for you. Nobody else's log is shown here, and yours is not shown on anyone else's.</p>
 <p><a href="/how-it-works">How progress works</a> · <a href="/quests">The quests</a></p>`,
         });

@@ -145,13 +145,16 @@ const completionWire = (c) => ({
     coins: { amount: Number(c.coins), state: c.coins_state, error: c.coins_error || null, at: c.coins_at || null },
 });
 
-/** A badge as anyone may see it: the id, its catalog name, and nothing about the person. */
+/**
+ * A badge as anyone may see it: the id, its catalog name, and the site whose quest awards it (a profile shows that site's
+ * icon on the badge), and nothing about the person.
+ */
 let appBadgeName = () => null;
 /** server/app.js points this at the app quests' badge names. */
 const setAppBadgeNames = (fn) => { appBadgeName = typeof fn === 'function' ? fn : () => null; };
 const badgeWire = (badgeId) => {
     const badge = catalog.badgeById(badgeId);
-    return { id: badgeId, name: badge ? badge.name : (appBadgeName(badgeId) || badgeId) };
+    return { id: badgeId, name: badge ? badge.name : (appBadgeName(badgeId) || badgeId), ...(badge && badge.site ? { site: badge.site } : {}) };
 };
 
 module.exports = { createApi, questWire, completionWire, badgeWire, setAppBadgeNames, SUBJECT_RE };

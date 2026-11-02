@@ -518,7 +518,7 @@ const seriesById = (id) => {
 };
 /** The badge for a quest, by badge id (the public badge endpoint stores only the id). */
 const badgeById = (badgeId) => {
-    for (const q of QUESTS) if (q.reward.badge.id === badgeId) return { ...q.reward.badge, quest_id: q.id };
+    for (const q of QUESTS) if (q.reward.badge.id === badgeId) return { ...q.reward.badge, quest_id: q.id, site: q.site };
     return null;
 };
 

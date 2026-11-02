@@ -99,8 +99,9 @@ const { render } = require('../server/render/html');
             assert.strictEqual(anon.status, 200, 'no token needed');
             const body = anon.json();
             assert.strictEqual(body.subject, kim.subject);
-            assert.deepStrictEqual(body.badges, [{ id: 'first-broadcast', name: 'First Broadcast', awarded_at: '2026-10-01T10:00:00.000Z' }]);
-            for (const b of body.badges) assert.deepStrictEqual(Object.keys(b).sort(), ['awarded_at', 'id', 'name'], 'nothing else about the person');
+            assert.deepStrictEqual(body.badges, [{ id: 'first-broadcast', name: 'First Broadcast', site: 'openvibe.live', awarded_at: '2026-10-01T10:00:00.000Z' }]);
+            // The site is the badge's (the site whose quest awards it), not the person's.
+            for (const b of body.badges) assert.deepStrictEqual(Object.keys(b).sort(), ['awarded_at', 'id', 'name', 'site'], 'nothing else about the person');
             assert.ok(!anon.text.includes('qcp_'), 'no completion');
             assert.ok(!anon.text.includes(kim.username), 'no username');
             assert.ok(!anon.text.includes('coins'), 'no coins');

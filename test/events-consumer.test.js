@@ -165,7 +165,7 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             // The series page shows a signed-in streamer what they have done; the home page folds the series into one card.
             const page = await t.get('/series/live-setup', { as: u });
             assert.strictEqual(page.status, 200);
-            assert.match(page.text, /<progress max="18" value="18">/);
+            assert.match(page.text, /<progress max="18" value="18" role="progressbar"[^>]*>18\/18 quests<\/progress>/);
             assert.ok(page.text.includes('href="/quests/live-setup-emote"'));
             const home = await t.get('/');
             assert.ok(home.text.includes('href="/series/live-setup"'), 'the home page links the series');
@@ -258,7 +258,7 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.strictEqual(settleIn.state, 'in_progress');
             assert.deepStrictEqual(settleIn.progress.map((p) => [p.event_type, p.count]), [['community.thread.created', 0], ['chat.room.message.created', 1]]);
             const page = await t.get('/me', { as: u });
-            assert.match(page.text, /<progress max="3" value="1">1 of 3<\/progress>/, 'a real <progress> element');
+            assert.match(page.text, /<progress max="3" value="1" role="progressbar"[^>]*>1\/3 streams<\/progress>/, 'a real <progress> element with its ARIA values');
             assert.ok(page.text.includes('First Broadcast'), 'the badge it earned');
         });
     } finally { await t.close(); }

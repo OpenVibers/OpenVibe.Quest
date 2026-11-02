@@ -67,7 +67,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .quest-title:hover { color: var(--accent-light, #60a5fa); text-decoration: underline; text-underline-offset: 3px; }
 .quest-why { margin: 4px 0 8px; color: var(--text-secondary, #96a7c2); font-size: .92rem; line-height: 1.45; }
 .quest-steps { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; font-size: .9rem; }
-.quest-steps li { position: relative; padding-left: 22px; color: var(--text-primary, #e6edf7); }
+.quest-steps li { position: relative; padding-left: 22px; color: var(--text-primary, #e6edf7); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
 .quest-steps li::before { content: ''; position: absolute; left: 0; top: .28em; width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid var(--border-light, #2c3d5c); }
 .step-count { font-size: .78rem; font-weight: 700; color: var(--text-muted, #7386a3); }
 .quest-reward { margin: 0; }
@@ -78,6 +78,21 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .reward-item { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent, #3b82f6) 45%, transparent); color: var(--text-primary, #e6edf7); background: color-mix(in srgb, var(--accent, #3b82f6) 10%, transparent); }
 .reward-item small { color: var(--text-secondary, #96a7c2); }   /* muted failed AA on the tinted chip */
 .reward-coins.soon { color: var(--text-muted, #7386a3); border-style: dashed; border-color: var(--border-light, #2c3d5c); }
+.reward-badge small { color: var(--text-muted, #7386a3); }
+/* The state in text as well as colour (server/render/quests.js stateChip): Active, or Completed. */
+.quest-state { display: inline-block; font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-secondary, #96a7c2); vertical-align: 1px; }
+.quest-state--active { border-color: var(--info, #38bdf8); color: var(--info-text, var(--info, #38bdf8)); }
+.quest-state--completed { border-color: var(--success, #22c55e); color: var(--success-text, var(--success, #22c55e)); }
+.quest-state--locked { border-color: var(--border-light, #2c3d5c); color: var(--text-muted, #7386a3); }
+.quest.is-completed { opacity: .78; }
+.quest-earned { margin: 8px 0 0; font-size: .84rem; color: var(--text-secondary, #96a7c2); }
+.quest-earned time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step-progress { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.step-progress progress { width: 64px; max-width: 32vw; }
+/* The terms on a quest page: plain list, the code's own words. */
+.terms { margin: .4rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; max-width: 820px; }
+.terms li { color: var(--text-secondary, #96a7c2); }
+.terms strong { color: var(--text-primary, #e6edf7); }
 .quest-series { border-style: dashed; }
 .quest-series .medal { font-size: 1.15rem; }
 @media (prefers-reduced-motion: reduce) { .quest { transition: none; } }

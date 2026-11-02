@@ -146,15 +146,15 @@ const completionWire = (c) => ({
 });
 
 /**
- * A badge as anyone may see it: the id, its catalog name, and the site whose quest awards it (a profile shows that site's
- * icon on the badge), and nothing about the person.
+ * A badge as anyone may see it: the id, its catalog name, the site whose quest awards it, and its picture (a glyph name
+ * from openvibe-shared/glyphs: what it was earned for), and nothing about the person.
  */
 let appBadgeName = () => null;
 /** server/app.js points this at the app quests' badge names. */
 const setAppBadgeNames = (fn) => { appBadgeName = typeof fn === 'function' ? fn : () => null; };
 const badgeWire = (badgeId) => {
     const badge = catalog.badgeById(badgeId);
-    return { id: badgeId, name: badge ? badge.name : (appBadgeName(badgeId) || badgeId), ...(badge && badge.site ? { site: badge.site } : {}) };
+    return { id: badgeId, name: badge ? badge.name : (appBadgeName(badgeId) || badgeId), ...(badge && badge.site ? { site: badge.site } : {}), ...(badge && badge.icon ? { icon: badge.icon } : {}) };
 };
 
 module.exports = { createApi, questWire, completionWire, badgeWire, setAppBadgeNames, SUBJECT_RE };

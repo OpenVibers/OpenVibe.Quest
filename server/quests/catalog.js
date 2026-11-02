@@ -516,10 +516,28 @@ const seriesById = (id) => {
     const x = Object.prototype.hasOwnProperty.call(SERIES, String(id)) ? SERIES[String(id)] : null;
     return x ? { ...x, quests: QUESTS.filter((q) => q.series === x.id) } : null;
 };
+/**
+ * Each badge's picture: what it was earned for, as a glyph from openvibe-shared/glyphs (a profile draws it on the badge;
+ * 21 badges with the same medal read as one blur, 2026-11-02). Every catalog badge has one (test/quests-api.test.js).
+ */
+const BADGE_ICONS = Object.freeze({
+    'first-broadcast': 'live', 'regular-broadcaster': 'calendar', 'first-follow': 'heart', 'thread-starter': 'chat',
+    'first-reply': 'reply', commenter: 'quote', 'said-hello': 'hand', 'wiki-editor': 'book-open', 'player-one': 'game',
+    toolsmith: 'wrench', 'space-thread-starter': 'rocket', 'first-post': 'pencil', 'deal-spotter': 'tag', 'deal-judge': 'thumbs-up',
+    'job-runner': 'terminal', 'dressed-up': 'shirt', 'robot-pilot': 'robot', 'world-builder': 'globe', premiere: 'clapper',
+    snapshot: 'camera', 'settled-in': 'home',
+    'live-setup-slot-holder': 'layers', 'live-setup-method-picked': 'sliders', 'live-setup-restreamer': 'share',
+    'live-setup-profile-ready': 'user-check', 'live-setup-offline-screen': 'image', 'live-setup-emote-maker': 'smile',
+    'live-setup-sound-board': 'volume', 'live-setup-goal-setter': 'target', 'live-setup-tip-jar': 'coin',
+    'live-setup-panel-writer': 'columns', 'live-setup-followed': 'members', 'live-setup-mod-squad': 'shield',
+    'live-setup-request-line': 'music', 'live-setup-rule-maker': 'gavel', 'live-setup-robot-wrangler': 'nodes',
+    'live-setup-bot-host': 'server', 'live-setup-paste-author': 'file', 'live-setup-complete': 'star',
+});
+
 /** The badge for a quest, by badge id (the public badge endpoint stores only the id). */
 const badgeById = (badgeId) => {
-    for (const q of QUESTS) if (q.reward.badge.id === badgeId) return { ...q.reward.badge, quest_id: q.id, site: q.site };
+    for (const q of QUESTS) if (q.reward.badge.id === badgeId) return { ...q.reward.badge, quest_id: q.id, site: q.site, icon: BADGE_ICONS[badgeId] || null };
     return null;
 };
 
-module.exports = { QUESTS, SITES, SERIES, EVENTS, EVENT_TYPES, SITE_ORDER, all, byId, withEvent, forEvent, stepCounts, grouped, seriesById, badgeById };
+module.exports = { QUESTS, SITES, SERIES, EVENTS, EVENT_TYPES, SITE_ORDER, all, byId, withEvent, forEvent, stepCounts, grouped, seriesById, badgeById, BADGE_ICONS };

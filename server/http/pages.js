@@ -227,7 +227,20 @@ ${raw(showcase.cta({
         const keys = ['all', ...groups.map((g) => siteKey(g.site))];
         const active = kit.tabOf(req.query, keys, 'site');
         const shown = active === 'all' ? groups : groups.filter((g) => siteKey(g.site) === active);
-        const [appList, p] = await Promise.all([active === 'all' && ctx.appQuests ? ctx.appQuests.listed(100) : [], pulse()]);
+        const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
+        const [appList, p, rows, completions] = await Promise.all([
+            active === 'all' && ctx.appQuests ? ctx.appQuests.listed(100) : [],
+            pulse(),
+            mine ? store.progressFor(s.db, req.viewer.subject) : [],
+            mine ? store.completionsFor(s.db, req.viewer.subject) : [],
+        ]);
+        const completed = new Map(completions.map((c) => [c.quest_id, c.completed_at]));
+        const seen = new Map();
+        for (const row of rows) {
+            const list = seen.get(row.quest_id) || new Map();
+            list.set(Number(row.step), Number(row.count));
+            seen.set(row.quest_id, list);
+        }
         const count = (g) => g.quests.length + (g.series || []).reduce((n, x) => n + x.quests.length, 0);
         const total = catalog.all().length;
         const one = active === 'all' ? null : shown[0];
@@ -242,10 +255,10 @@ ${raw(showcase.cta({
             body: html`<h1>${one ? html`Quests on ${one.name}` : 'All quests'}</h1>
 <p class="lede">${one ? html`${count(one)} quest${count(one) === 1 ? '' : 's'} on <a href="https://${one.site}">${one.name}</a>${one.what ? html`, ${one.what}` : ''}.` : html`${total} quests on ${siteCount} OpenVibe sites, grouped by the site whose events each one counts.`} Each pays a badge; how many people hold it is a count, never who.</p>
 ${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', active, items: [{ key: 'all', label: 'All', count: total, href: '/quests' }, ...groups.map((g) => ({ key: siteKey(g.site), label: quests.shortSite(g.site), count: count(g) }))] }))}
-${quests.list(shown, { ...coinsUi, counts: p.byQuest })}
+${quests.list(shown, { ...coinsUi, counts: p.byQuest, seen: mine ? seen : null, completed: mine ? completed : null })}
 ${appList.length ? html`<section class="site-group" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
 <p class="muted">Quests that developer apps on OpenVibe define on their own events. Each pays a badge named for the app, never OpenCoins.</p>
-<ul class="quest-list">${appList.map((q) => quests.appCard(q))}</ul></section>` : ''}
+<ul class="quest-list">${appList.map((q) => quests.appCard(q, { seen: mine ? (seen.get(q.id) || new Map()) : null, completedAt: mine ? (completed.get(q.id) || null) : null }))}</ul></section>` : ''}
 ${quests.coinsNote(coinsUi)}
 <p><a href="/">Quests home</a> · <a href="/how-it-works">How it works</a></p>`,
         });
@@ -274,6 +287,7 @@ ${quests.coinsNote(coinsUi)}
             store.badgeHolders(s.db, quest.reward.badge.id),
         ]);
         const seen = new Map(rows.map((x) => [Number(x.step), Number(x.count)]));
+        const shown = completion ? new Map(quest.steps.map((s, i) => [i, s.count])) : seen;
         return page(req, res, {
             index: quest.status === 'active', cache: mine ? null : PUBLIC_CACHE,
             title: quest.title, description: quest.why || `${quest.title}: a quest an OpenVibe app made.`,
@@ -281,12 +295,15 @@ ${quests.coinsNote(coinsUi)}
             body: html`<h1>${quest.title}</h1>
 ${quest.why ? html`<p class="lede">${quest.why}</p>` : ''}
 <p class="muted">Made by an OpenVibe developer app (project <code>${quest.project_id}</code>)${quest.url ? html` · <a href="${quest.url}" rel="nofollow noopener">Where to do it</a>` : ''}.${quest.status === 'retired' ? ' Retired: it no longer counts.' : ''}</p>
+<p>${quests.stateChip(Boolean(completion), quest.status === 'retired')}</p>
 <h2>What it counts</h2>
-<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${(seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${(shown.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+${mine ? html`<h2>Your progress</h2>
+${quest.steps.map((step, i) => quests.progress(step.label, shown.get(i) || 0, step.count, quests.unitOf(step)))}` : ''}
 <h2>The reward</h2>
 <p>The badge <strong>${quest.reward.badge.name}</strong>. App quests never pay OpenCoins.</p>
 <p class="muted">${holders ? html`${holders} ${holders === 1 ? 'person has' : 'people have'} this badge.` : 'A badge is awarded once and kept.'}</p>
-${completion ? html`<div class="notice" role="status">You completed this quest on <strong>${String(completion.completed_at).slice(0, 10)}</strong>.</div>` : ''}
+${completion ? html`<div class="notice ok" role="status">Completed on <strong><time datetime="${completion.completed_at}">${String(completion.completed_at).slice(0, 10)}</time></strong>. Badge earned: <strong>${quest.reward.badge.name}</strong>.</div>` : ''}
 <p><a href="/quests">All quests</a></p>`,
         });
     });
@@ -310,23 +327,31 @@ ${completion ? html`<div class="notice" role="status">You completed this quest o
             ]);
             return { seen: new Map(rows.map((x) => [Number(x.step), Number(x.count)])), completion, holders };
         };
-        return load().then((state) => page(req, res, {
-            index: true, cache: mine ? null : PUBLIC_CACHE,
-            title: quest.title,
-            description: questDescription(quest),
-            crumbs: [{ label: 'Quests', href: '/' }, { label: quest.title }],
-            body: html`<h1>${quest.title}</h1>
+        return load().then((state) => {
+            // A completion means every step reached its target, even if no progress row was written for this step.
+            const seen = state ? (state.completion ? new Map(quest.steps.map((s, i) => [i, s.count])) : state.seen) : null;
+            return page(req, res, {
+                index: true, cache: mine ? null : PUBLIC_CACHE,
+                title: quest.title,
+                description: questDescription(quest),
+                crumbs: [{ label: 'Quests', href: '/' }, { label: quest.title }],
+                body: html`<h1>${quest.title}</h1>
 <p class="lede">${quest.why}</p>
 <p class="muted">On <a href="https://${quest.site}">${siteName(quest.site)}</a>${quest.series && catalog.SERIES[quest.series] ? html`, in <a href="/series/${quest.series}">${catalog.SERIES[quest.series].title}</a>` : ''}.</p>
+<p>${quests.stateChip(Boolean(state && state.completion))}</p>
 <h2>What it counts</h2>
-<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${Object.entries(step.match || {}).map(([k, v]) => html` with <code>${k}</code> <code>${String(v)}</code>`)}${state && (state.seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+<ul class="steps">${quest.steps.map((step, i) => html`<li><strong>${step.label}</strong> — ${step.count}× <code>${step.event_type}</code>${Object.entries(step.match || {}).map(([k, v]) => html` with <code>${k}</code> <code>${String(v)}</code>`)}${seen && (seen.get(i) || 0) >= step.count ? html` <span class="done">done</span>` : ''}</li>`)}</ul>
+${state ? html`<h2>Your progress</h2>
+${quest.steps.map((step, i) => quests.progress(step.label, seen.get(i) || 0, step.count, quests.unitOf(step)))}` : ''}
 <h2>The reward</h2>
 <p>${quests.reward(quest, coinsUi)}</p>
 <p class="muted">${state && state.holders ? html`${state.holders} ${state.holders === 1 ? 'person has' : 'people have'} this badge.` : html`A badge is awarded once and kept.`}</p>
-${state && state.completion ? html`<div class="notice" role="status">You completed this quest on <strong>${String(state.completion.completed_at).slice(0, 10)}</strong>${coinsUi.coinsEnabled && state.completion.coins_state === 'credited' ? html`, and its OpenCoins are in your wallet` : ''}.</div>` : html`<p><a href="/me">Your quest log</a> keeps your progress.</p>`}
+${state && state.completion ? html`<div class="notice ok" role="status">Completed on <strong><time datetime="${state.completion.completed_at}">${String(state.completion.completed_at).slice(0, 10)}</time></strong>. Badge earned: <strong>${quest.reward.badge.name}</strong>${coinsUi.coinsEnabled && state.completion.coins_state === 'credited' ? html`, and its OpenCoins are in your wallet` : ''}.</div>` : html`<p><a href="/me">Your quest log</a> keeps your progress.</p>`}
+${quests.terms()}
 ${quests.coinsNote(coinsUi)}
 <p><a href="/quests">All quests</a></p>`,
-        }));
+            });
+        });
     });
 
     // ── A series: its quests, and which of them the person has done ──
@@ -337,8 +362,17 @@ ${quests.coinsNote(coinsUi)}
             body: html`<h1>No such series</h1><p>There is no quest series at this address. <a href="/quests">The quest list</a> has every quest.</p>`,
         }, 404);
         const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
-        const done = new Set(mine ? (await store.completionsFor(s.db, req.viewer.subject)).map((c) => c.quest_id) : []);
-        const finished = series.quests.filter((q) => done.has(q.id)).length;
+        const [rows, completions] = mine
+            ? await Promise.all([store.progressFor(s.db, req.viewer.subject), store.completionsFor(s.db, req.viewer.subject)])
+            : [[], []];
+        const completed = new Map(completions.map((c) => [c.quest_id, c.completed_at]));
+        const seen = new Map();
+        for (const row of rows) {
+            const list = seen.get(row.quest_id) || new Map();
+            list.set(Number(row.step), Number(row.count));
+            seen.set(row.quest_id, list);
+        }
+        const finished = series.quests.filter((q) => completed.has(q.id)).length;
         return page(req, res, {
             index: true, cache: mine ? null : PUBLIC_CACHE,
             title: series.title,
@@ -347,8 +381,8 @@ ${quests.coinsNote(coinsUi)}
             body: html`<h1>${series.title}</h1>
 <p class="lede">${series.why}</p>
 <p class="muted">On <a href="https://${series.site}">${siteName(series.site)}</a>. ${series.how} <a href="${series.href}">${series.hrefLabel}</a>.</p>
-${mine ? quests.progress('Your progress', finished, series.quests.length) : ''}
-<ul class="quest-list">${series.quests.map((q) => quests.card(q, { ...coinsUi, earned: done.has(q.id) }))}</ul>
+${mine ? quests.progress('Your progress', finished, series.quests.length, series.quests.length > 1 ? 'quests' : '') : ''}
+<ul class="quest-list">${series.quests.map((q) => quests.card(q, { ...coinsUi, earned: completed.has(q.id), seen: mine ? (seen.get(q.id) || new Map()) : null, completedAt: mine ? (completed.get(q.id) || null) : null }))}</ul>
 ${quests.coinsNote(coinsUi)}
 <p><a href="/quests">All quests</a>${mine ? html` · <a href="/me">Your quest log</a>` : ''}</p>`,
         });
@@ -403,14 +437,21 @@ each quest still needs, and the badges you have earned.</p>
 <p class="muted">Signed in as <strong>${req.viewer.displayName || req.viewer.username || 'you'}</strong>. One log across every OpenVibe site.</p>
 ${yourStuff(req)}
 <h2>In progress</h2>
-${started.length ? started.map((q) => html`<section class="quest-block"><h3><a href="/quests/${q.id}">${q.title}</a> <small>on ${siteName(q.site)}</small></h3>
-${q.steps.map((step, i) => quests.progress(step.label, (seen.get(q.id) || new Map()).get(i) || 0, step.count))}
+${started.length ? started.map((q) => html`<section class="quest-block"><h3><a href="/quests/${q.id}">${q.title}</a> <small>on ${siteName(q.site)}</small> ${quests.stateChip(false)}</h3>
+${q.steps.map((step, i) => quests.progress(step.label, (seen.get(q.id) || new Map()).get(i) || 0, step.count, quests.unitOf(step)))}
 <p class="quest-reward">${quests.reward(q, coinsUi)}</p></section>`) : html`<p class="muted">Nothing started yet. <a href="/quests">Pick a quest</a> — any of the sites you already use counts.</p>`}
 <h2>Completed</h2>
 ${finished.length ? html`<ul class="quest-list">${finished.map((q) => {
                 const c = done.get(q.id);
-                return html`<li class="quest"><a class="quest-title" href="/quests/${q.id}">${q.title}</a>
-<p class="quest-why">Completed ${String(c.completed_at).slice(0, 10)}. Badge: <strong>${q.reward.badge.name}</strong>. ${q.reward.item ? (c.item_state === 'granted' ? html`${q.reward.item.emoji} <strong>${q.reward.item.name}</strong> is in <a href="https://inventory.openvibe.network/me">your inventory</a>. ` : c.item_state === 'failed' ? html`${q.reward.item.name} could not be given yet — this is recorded and retried. ` : html`${q.reward.item.name} is on its way to your inventory. `) : ''}${c.coins > 0 ? (c.coins_state === 'credited' ? html`<strong>${c.coins}</strong> OpenCoins credited.` : c.coins_state === 'skipped' ? html`${c.coins} OpenCoins ${coinsUi.coinsEnabled ? html`were not credited: ${c.coins_error || 'the daily cap was reached'}` : html`start soon`}.` : html`${c.coins} OpenCoins could not be credited yet — this is recorded and retried.`) : ''}</p></li>`;
+                const item = q.reward.item ? (c.item_state === 'granted' ? html`${q.reward.item.emoji} <strong>${q.reward.item.name}</strong> is in <a href="https://inventory.openvibe.network/me">your inventory</a>. ` : c.item_state === 'failed' ? html`${q.reward.item.name} could not be given yet — this is recorded and retried. ` : html`${q.reward.item.name} is on its way to your inventory. `) : '';
+                const coins = c.coins > 0 ? (c.coins_state === 'credited' ? html`<strong>${c.coins}</strong> OpenCoins credited.` : c.coins_state === 'skipped' ? html`${c.coins} OpenCoins ${coinsUi.coinsEnabled ? html`were not credited: ${c.coins_error || 'the daily cap was reached'}` : html`start soon`}.` : html`${c.coins} OpenCoins could not be credited yet — this is recorded and retried.`) : '';
+                return html`<li class="quest is-completed">
+    ${quests.medal(q, { earned: true })}
+    <div class="quest-main">
+    <a class="quest-title" href="/quests/${q.id}">${q.title}</a> ${quests.stateChip(true)}
+    <p class="quest-earned">Completed <time datetime="${c.completed_at}">${String(c.completed_at).slice(0, 10)}</time> · Badge: <strong>${q.reward.badge.name}</strong></p>
+    ${item || coins ? html`<p class="quest-why">${item}${coins}</p>` : ''}
+    </div></li>`;
             })}</ul>` : html`<p class="muted">No quests completed yet.</p>`}
 <h2>Your badges</h2>
 ${badges.length ? html`<ul class="badges">${badges.map((b) => html`<li><strong>${badge(b.badge_id).name}</strong> <small>${String(b.awarded_at).slice(0, 10)}</small></li>`)}</ul>

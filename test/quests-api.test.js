@@ -182,7 +182,9 @@ const { render } = require('../server/render/html');
 
             const mine = await t.get('/me', { as: kim });
             assert.strictEqual(mine.status, 200);
-            assert.ok(mine.text.includes('<progress max="3" value="2">2 of 3</progress>'), 'a real progress bar for the started quest');
+            assert.ok(mine.text.includes('role="progressbar"') && mine.text.includes('aria-valuenow="2"') && mine.text.includes('aria-valuemax="3"'), 'a real progress bar with its ARIA values');
+            assert.ok(mine.text.includes('2/3 streams'), 'the fraction with its unit');
+            assert.ok(mine.text.includes('<span class="quest-state quest-state--active">Active</span>'), 'the started quest says Active');
             assert.ok(mine.text.includes('First Broadcast'), 'the badge');
             assert.ok(mine.text.includes('Completed'), 'the completion');
             assert.ok(mine.text.includes(`/api/v1/profiles/${kim.subject}/badges`), 'it says what is public');

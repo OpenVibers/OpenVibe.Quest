@@ -99,9 +99,16 @@ const { render } = require('../server/render/html');
             assert.strictEqual(anon.status, 200, 'no token needed');
             const body = anon.json();
             assert.strictEqual(body.subject, kim.subject);
-            assert.deepStrictEqual(body.badges, [{ id: 'first-broadcast', name: 'First Broadcast', site: 'openvibe.live', awarded_at: '2026-10-01T10:00:00.000Z' }]);
-            // The site is the badge's (the site whose quest awards it), not the person's.
-            for (const b of body.badges) assert.deepStrictEqual(Object.keys(b).sort(), ['awarded_at', 'id', 'name', 'site'], 'nothing else about the person');
+            assert.deepStrictEqual(body.badges, [{ id: 'first-broadcast', name: 'First Broadcast', site: 'openvibe.live', icon: 'live', awarded_at: '2026-10-01T10:00:00.000Z' }]);
+            // The site and the icon are the badge's (the site whose quest awards it, what it is for), not the person's.
+            for (const b of body.badges) assert.deepStrictEqual(Object.keys(b).sort(), ['awarded_at', 'icon', 'id', 'name', 'site'], 'nothing else about the person');
+            // Every catalog badge has a picture, and every picture is a glyph Shared can draw.
+            const { NAMES } = require('openvibe-shared/glyphs');
+            const catalog = require('../server/quests/catalog');
+            for (const q of catalog.QUESTS) {
+                const icon = catalog.BADGE_ICONS[q.reward.badge.id];
+                assert.ok(icon && NAMES.includes(icon), `${q.reward.badge.id} has a glyph (${icon})`);
+            }
             assert.ok(!anon.text.includes('qcp_'), 'no completion');
             assert.ok(!anon.text.includes(kim.username), 'no username');
             assert.ok(!anon.text.includes('coins'), 'no coins');

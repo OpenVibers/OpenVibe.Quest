@@ -211,7 +211,7 @@ const { render } = require('../server/render/html');
             const robots = await t.get('/robots.txt');
             assert.ok(robots.text.includes('Disallow: /me'), 'the private log is not crawled');
             const llms = await t.get('/llms.txt');
-            assert.ok(llms.text.includes('(https://openvibe.quest/quests/go-live)'), 'llms.txt lists the quests');
+            assert.ok(llms.text.includes('(https://openvibe.quest/quests/go-live.md)'), 'llms.txt lists the quests at the Markdown twin');
             const full = await t.get('/llms-full.txt');
             assert.ok(full.text.includes('https://openvibe.quest/quests/go-live'), 'llms-full.txt has every quest page');
         });

@@ -81,9 +81,12 @@ function createDiscoveryRoutes(ctx) {
                     { title: 'How quests work', url: abs('/how-it-works'), note: 'what is counted, what is stored, and the rewards' },
                 ] },
                 { title: 'The quests', links: catalog.all().map((q) => ({ title: q.title, url: abs(`/quests/${q.id}`), note: `${(catalog.SITES[q.site] || {}).name || q.site} — reward: the ${q.reward.badge.name} badge${q.reward.item ? ` and the ${q.reward.item.name}` : ''}` })) },
+                // A JSON API is what an agent came for, not something to skip (AGT-5 review).
+                { title: 'API', links: [
+                    { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
+                ] },
             ],
             optional: [
-                { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
                 { title: 'Sitemap', url: abs('/sitemap.xml') },
                 { title: 'Full text for language models', url: abs('/llms-full.txt') },
                 { title: 'Release metadata (JSON)', url: abs('/release.json') },

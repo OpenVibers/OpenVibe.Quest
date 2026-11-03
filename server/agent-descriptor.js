@@ -6,6 +6,7 @@ module.exports = {
     purpose: 'One quest log across the whole OpenVibe network: finish quests by streaming, posting and playing, and earn badges, items and OpenCoins.',
     home: 'https://openvibe.quest', api: '/api/v1',
     docs: 'https://openvibe.quest/how-it-works',
+    openapi: '/openapi.json',
     policy: {
         auth: ['none', 'bearer', 'Network OIDC'],
         rateLimit: 'The API is rate limited per caller; the limits are per address and per account.',

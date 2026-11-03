@@ -72,24 +72,27 @@ function createDiscoveryRoutes(ctx) {
             name: SITE_NAME,
             summary: 'OpenVibe.Quest: Quests across the whole network.',
             details: 'Every page is server-rendered and readable without JavaScript.',
+            markdown: true,
+            base: site,
             sections: [
                 { title: 'Start here', links: [
                     { title: 'OpenVibe.Quest', url: abs('/'), note: 'Quests across the whole network.' },
                     { title: 'All quests', url: abs('/quests'), note: 'every quest, grouped by site' },
                     { title: 'How quests work', url: abs('/how-it-works'), note: 'what is counted, what is stored, and the rewards' },
-                    { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
-                    { title: 'What shipped on OpenVibe.Quest', url: abs('/updates') },
                 ] },
                 { title: 'The quests', links: catalog.all().map((q) => ({ title: q.title, url: abs(`/quests/${q.id}`), note: `${(catalog.SITES[q.site] || {}).name || q.site} — reward: the ${q.reward.badge.name} badge${q.reward.item ? ` and the ${q.reward.item.name}` : ''}` })) },
-                { title: 'Machine-readable', links: [
-                    { title: 'Sitemap', url: abs('/sitemap.xml') },
-                    { title: 'Full text for language models', url: abs('/llms-full.txt') },
-                    { title: 'Release metadata (JSON)', url: abs('/release.json') },
+                // A JSON API is what an agent came for, not something to skip (AGT-5 review).
+                { title: 'API', links: [
+                    { title: 'The catalog (JSON)', url: abs('/api/v1/quests'), note: 'every quest, grouped by site' },
                 ] },
-                { title: 'Elsewhere', links: [
-                    { title: 'OpenVibe.Network', url: 'https://openvibe.network', note: 'accounts, apps and grants' },
-                    { title: 'OpenVibe.Services', url: 'https://openvibe.services', note: 'apps, keys and capability grants' },
-                ] },
+            ],
+            optional: [
+                { title: 'Sitemap', url: abs('/sitemap.xml') },
+                { title: 'Full text for language models', url: abs('/llms-full.txt') },
+                { title: 'Release metadata (JSON)', url: abs('/release.json') },
+                { title: 'OpenVibe.Network', url: 'https://openvibe.network', note: 'accounts, apps and grants' },
+                { title: 'OpenVibe.Services', url: 'https://openvibe.services', note: 'apps, keys and capability grants' },
+                { title: 'What shipped on OpenVibe.Quest', url: abs('/updates') },
             ],
         }));
     });

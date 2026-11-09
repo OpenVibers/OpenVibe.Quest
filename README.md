@@ -2,6 +2,9 @@
 
 > Quests across the whole network.
 
+**Live site:** https://openvibe.quest · **API docs:** https://openvibe.services · **For AI:** https://openvibe.quest/llms.txt
+**Run it:** `npm ci && npm run dev` (Node 22 or newer) · **Tests:** `npm test`
+
 **Status:** first release. The quest log, the events consumer, the OpenCoins crediting, the item rewards and the pages
 are written and tested; it is deployed, and OpenCoins have been credited in production since 2026-10-14
 (`QUEST_COINS=on`, within the daily caps).

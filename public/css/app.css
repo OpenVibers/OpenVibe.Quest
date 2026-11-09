@@ -198,6 +198,8 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 
 /* One shared daily quest, before the catalog. */
 .q-daily { border: 1px solid var(--ov-border, #8886); border-radius: 18px; padding: clamp(20px, 4vw, 36px); margin-block: 20px; background: var(--ov-surface, transparent); }
+.q-daily-icon { float: right; display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid var(--ov-border, #8886); border-radius: 15px; color: var(--accent-light, #8ab8ff); background: color-mix(in srgb, var(--accent, #678cff) 18%, transparent); }
+.q-reviewed-glyph { display: inline-block; flex: none; object-fit: contain; }
 .q-daily-kicker { font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .q-daily h1 { margin: .2em 0; font-size: clamp(1.5rem, 4vw, 2.4rem); }
 .q-daily-steps { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 8px; }

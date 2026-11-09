@@ -38,7 +38,7 @@ function asQuest(row) {
     };
 }
 
-function createAppQuests({ s, log = console, subscribe: initialSubscribe = null }) {
+function createAppQuests({ s, glyphs, log = console, subscribe: initialSubscribe = null }) {
     const badgeNames = new Map();
     let subscribe = initialSubscribe;
     const iso = () => new Date(s.now()).toISOString();
@@ -84,6 +84,9 @@ function createAppQuests({ s, log = console, subscribe: initialSubscribe = null 
             [id, projectId, key, principal.requester, env, slug, body.title, body.why || null, JSON.stringify(body.steps), body.badge.name, body.url || null, status, at]);
             badgeNames.set(id, body.badge.name);
             if (env === 'production' && status === 'active') await ensureSubscribed(key);
+            if (env === 'production' && status === 'active' && glyphs) {
+                void glyphs.request(glyphs.nameForBadge(id), `${body.badge.name}: ${body.title}. ${body.why || 'A quest made by an OpenVibe app.'}`);
+            }
             return { status: existed ? 200 : 201, row: await s.db.maybe('SELECT * FROM app_quests WHERE id = $1', [id]) };
         },
 

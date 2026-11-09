@@ -172,7 +172,7 @@ const { render } = require('../server/render/html');
             assert.strictEqual(svg.status, 200);
             assert.match(svg.headers.get('content-type'), /^image\/svg\+xml/);
             assert.match(svg.headers.get('cache-control') || '', /^public, max-age=86400/);
-            assert.ok(svg.text.startsWith('<svg') && svg.text.includes('>FB<') && svg.text.includes('First Broadcast'), 'the medal and the badge name');
+            assert.ok(svg.text.startsWith('<svg') && svg.text.includes(require('openvibe-shared/glyphs').path('live')) && svg.text.includes('First Broadcast'), 'the glyph medal and the badge name');
             assert.strictEqual((await t.get('/series/live-setup/badge.svg')).status, 200);
             assert.strictEqual((await t.get('/quests/no-such-quest/badge.svg')).status, 404);
             const how = await t.get('/how-it-works');

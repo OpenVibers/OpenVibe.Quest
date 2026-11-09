@@ -26,6 +26,8 @@ const { createDiscoveryRoutes, homeJsonLd } = require('./discovery');
 const { html, raw, table } = require('../render/html');
 const { send } = require('../render/layout');
 const quests = require('../render/quests');
+const icons = require('../render/quest-icons');
+const { nameForBadge, nameForDaily } = require('../quests/glyph-drafts');
 const S = require('../render/short');
 const catalog = require('../quests/catalog');
 const store = require('../quests/store');
@@ -141,12 +143,12 @@ function createPageRoutes(ctx) {
     }
 
     r.get('/', async (req, res) => {
-        const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse()]);
+        const [appList, p, approvedGlyphs] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse(), ctx.glyphs.approved()]);
         const daily = signedIn(req) ? await ctx.daily.progress(req.viewer.subject) : await ctx.daily.publicQuest();
         const past = await s.db.many('SELECT day,title FROM daily_quests WHERE day < $1 ORDER BY day DESC LIMIT 14', [daily.date]);
-        const dailyCard = html`<section class="sc-sec q-daily" aria-labelledby="daily-title"><p class="q-daily-kicker">TODAY'S QUEST · ${daily.date}</p>
+        const dailyCard = html`<section class="sc-sec q-daily" aria-labelledby="daily-title"><span class="q-daily-icon">${icons.glyph('spark', 32, approvedGlyphs.get(nameForDaily(daily.date)))}</span><p class="q-daily-kicker">TODAY'S QUEST · ${daily.date}</p>
 <h1 id="daily-title">${daily.title}</h1><p>${daily.story}</p>
-<ol class="q-daily-steps">${daily.steps.map((step) => html`<li><span class="ov-icon" data-icon="${step.site.split('.')[1] || 'quest'}" data-size="32" aria-hidden="true"></span><span>${step.done ? '✓ ' : ''}<a href="${step.href}">${step.sentence}</a><small>${step.site}</small></span></li>`)}</ol>
+<ol class="q-daily-steps">${daily.steps.map((step) => html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 32)}<span>${step.done ? '✓ ' : ''}<a href="${step.href}">${step.sentence}</a><small>${step.site}</small></span></li>`)}</ol>
 <p>${signedIn(req) ? html`${daily.progress} of 3 · ${daily.streak}-day streak` : html`Sign in to track your progress.`} · ${daily.finished_today || 0} finished today</p>
 <a href="/build-a-step-type">Build a step type</a></section>`;
         const pastFold = html`<details class="q-daily-past"><summary>Past daily quests (${past.length})</summary><ul>${past.map((x) => html`<li><a href="/api/v1/daily/${x.day}">${x.day}: ${x.title}</a></li>`)}</ul></details>`;
@@ -244,11 +246,12 @@ ${raw(showcase.cta({
         const active = kit.tabOf(req.query, keys, 'site');
         const shown = active === 'all' ? groups : groups.filter((g) => siteKey(g.site) === active);
         const mine = signedIn(req) && SUBJECT_RE.test(req.viewer.subject);
-        const [appList, p, rows, completions] = await Promise.all([
+        const [appList, p, rows, completions, approvedGlyphs] = await Promise.all([
             active === 'all' && ctx.appQuests ? ctx.appQuests.listed(100) : [],
             pulse(),
             mine ? store.progressFor(s.db, req.viewer.subject) : [],
             mine ? store.completionsFor(s.db, req.viewer.subject) : [],
+            ctx.glyphs.approved(),
         ]);
         const completed = new Map(completions.map((c) => [c.quest_id, c.completed_at]));
         const seen = new Map();
@@ -260,6 +263,7 @@ ${raw(showcase.cta({
         const count = (g) => g.quests.length + (g.series || []).reduce((n, x) => n + x.quests.length, 0);
         const total = catalog.all().length;
         const one = active === 'all' ? null : shown[0];
+        const daily = signedIn(req) ? await ctx.daily.progress(req.viewer.subject) : await ctx.daily.publicQuest();
         page(req, res, {
             index: true, cache: signedIn(req) ? null : PUBLIC_CACHE,
             title: one ? `Quests on ${one.name}` : 'All quests',
@@ -268,8 +272,10 @@ ${raw(showcase.cta({
                 : `All ${total} OpenVibe quests on ${siteCount} sites, grouped by site: what each one counts, the badge it pays and how many people hold it.`,
             crumbs: [{ label: 'Quests', href: '/' }, { label: one ? one.name : 'All quests' }],
             styles: ['kit.css'],
+            localStyles: ['css/quest-visual.css'],
             body: html`<h1>${one ? html`Quests on ${one.name}` : 'All quests'}</h1>
 <p class="lede">${one ? html`${count(one)} quest${count(one) === 1 ? '' : 's'} on <a href="https://${one.site}">${one.name}</a>${one.what ? html`, ${one.what}` : ''}.` : html`${total} quests on ${siteCount} OpenVibe sites, grouped by the site whose events each one counts.`} Each pays a badge; how many people hold it is a count, never who.</p>
+${daily ? html`<section class="q-index-daily" aria-labelledby="q-index-daily-title"><div class="q-index-daily-copy"><span class="q-index-daily-icon">${icons.glyph('spark', 32, approvedGlyphs.get(nameForDaily(daily.date)))}</span><p class="q-eyebrow">TODAY'S SHARED QUEST · ${daily.date}</p><h2 id="q-index-daily-title">${daily.title}</h2><p>${daily.story}</p><span class="q-index-daily-count">${signedIn(req) ? `${daily.progress} of 3 complete` : `${daily.finished_today || 0} finished today`}</span></div><ol>${daily.steps.map((step) => html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 24)}<span><a href="${step.href}">${step.sentence}</a><small>${quests.shortSite(step.site)}</small></span>${step.done ? html`<span class="q-step-check">✓</span>` : ''}</li>`)}</ol></section>` : ''}
 ${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', active, items: [{ key: 'all', label: 'All', count: total, href: '/quests' }, ...groups.map((g) => ({ key: siteKey(g.site), label: quests.shortSite(g.site), count: count(g) }))] }))}
 ${quests.list(shown, { ...coinsUi, counts: p.byQuest, seen: mine ? seen : null, completed: mine ? completed : null })}
 ${appList.length ? html`<section class="site-group" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>
@@ -428,11 +434,18 @@ each quest still needs, and the badges you have earned.</p>
         });
 
         const subject = req.viewer.subject;
-        const [progress, completions, badges, creditedToday] = await Promise.all([
+        const week = new Date(s.now());
+        week.setUTCDate(week.getUTCDate() - (week.getUTCDay() + 6) % 7);
+        week.setUTCHours(0, 0, 0, 0);
+        const weekStart = week.toISOString();
+        const [progress, completions, badges, creditedToday, creditedWeek, daily, approvedGlyphs] = await Promise.all([
             store.progressFor(s.db, subject),
             store.completionsFor(s.db, subject),
             store.badgesFor(s.db, subject),
             store.creditedTo(s.db, subject, store.dayOf(s.now())),
+            s.db.value("SELECT COALESCE(SUM(coins),0) FROM quest_completions WHERE subject=$1 AND coins_state='credited' AND coins_at >= $2", [subject, weekStart]),
+            ctx.daily.progress(subject),
+            ctx.glyphs.approved(),
         ]);
         const seen = new Map();
         for (const row of progress) {
@@ -445,19 +458,30 @@ each quest still needs, and the badges you have earned.</p>
         const started = catalog.all().filter((q) => questState(q) === 'started');
         const finished = catalog.all().filter((q) => questState(q) === 'done');
         const badge = (id) => catalog.badgeById(id) || { id, name: (ctx.appQuests && ctx.appQuests.badgeName(id)) || id };
+        const earnedIds = new Set(badges.map((b) => b.badge_id));
+        const locked = catalog.all().filter((q) => !earnedIds.has(q.reward.badge.id));
+        const appBadgeQuests = new Map((await Promise.all(badges.filter((b) => !catalog.byId(b.quest_id) && !String(b.quest_id).startsWith('daily-'))
+            .map(async (b) => [b.quest_id, await ctx.appQuests.byId(b.quest_id)]))).filter(([, q]) => q));
+        const badgeTile = (b, isLocked = false) => {
+            const id = isLocked ? b.reward.badge.id : b.badge_id;
+            const info = badge(id);
+            const q = isLocked ? b : catalog.byId(info.quest_id || b.quest_id) || appBadgeQuests.get(b.quest_id);
+            const title = info.name;
+            const date = isLocked ? 'Not earned yet' : String(b.awarded_at).slice(0, 10);
+            const href = q ? (String(q.id).startsWith('app.') ? `/apps/quests/${encodeURIComponent(q.id)}` : `/quests/${q.id}`) : b.quest_id?.startsWith('daily-') ? '/' : `/apps/quests/${encodeURIComponent(b.quest_id || '')}`;
+            const why = q ? q.why : isLocked ? 'Complete this quest to earn the badge.' : 'Earned by completing a quest across OpenVibe.';
+            const approved = isLocked ? null : approvedGlyphs.get(nameForBadge(id));
+            return html`<li><details class="q-badge${isLocked ? ' is-locked' : ''}" data-badge-id="${id}" data-awarded="${isLocked ? '' : date}"><summary aria-label="${title}, ${date}"><span class="q-badge-medal" style="--h:${quests.hueOf(id)}">${icons.glyph(icons.badge(id, q), 26, approved)}</span><span class="q-badge-tip"><strong>${title}</strong><small>${date}</small></span></summary><div class="q-badge-sheet"><p class="q-eyebrow">${isLocked ? 'STILL TO EARN' : 'BADGE EARNED'}</p><span class="q-badge-medal q-badge-medal--large" style="--h:${quests.hueOf(id)}">${icons.glyph(icons.badge(id, q), 36, approved)}</span><h3>${title}</h3><p>${why}</p>${q ? html`<p>From <strong>${q.title}</strong></p><ul class="q-badge-steps">${q.steps.map((step) => html`<li>${step.label}</li>`)}</ul>` : ''}<p class="q-badge-date">${isLocked ? 'Complete the quest to unlock it.' : html`Earned <time datetime="${b.awarded_at}">${date}</time>`}</p><div class="q-badge-actions"><a href="${href}">View quest</a>${isLocked ? '' : html`<button type="button" class="q-share" data-share="${href}" data-title="${title}">Share</button>`}<button type="button" class="q-badge-close">Close</button></div></div></details></li>`;
+        };
 
         return page(req, res, {
             title: 'Your quest log',
             crumbs: [{ label: 'Quests', href: '/' }, { label: 'Your quest log' }],
-            body: html`<h1>Your quest log</h1>
-<p class="muted">Signed in as <strong>${req.viewer.displayName || req.viewer.username || 'you'}</strong>. One log across every OpenVibe site.</p>
-${yourStuff(req)}
-<h2>In progress</h2>
-${started.length ? started.map((q) => html`<section class="quest-block"><h3><a href="/quests/${q.id}">${q.title}</a> <small>on ${siteName(q.site)}</small> ${quests.stateChip(false)}</h3>
-${q.steps.map((step, i) => quests.progress(step.label, (seen.get(q.id) || new Map()).get(i) || 0, step.count, quests.unitOf(step)))}
-<p class="quest-reward">${quests.reward(q, coinsUi)}</p></section>`) : html`<p class="muted">Nothing started yet. <a href="/quests">Pick a quest</a> — any of the sites you already use counts.</p>`}
-<h2>Completed</h2>
-${finished.length ? html`<ul class="quest-list">${finished.map((q) => {
+            scripts: ['js/quest-visual.js'], localStyles: ['css/quest-visual.css'],
+            body: html`<div class="q-log"><header class="q-log-hero"><div><p class="q-eyebrow">YOUR JOURNEY ACROSS OPENVIBE</p><h1>Your quest log</h1><p>Signed in as <strong>${req.viewer.displayName || req.viewer.username || 'you'}</strong>. One log across every OpenVibe site, showing what you have done and what each quest still needs.</p></div><div class="q-log-stats"><div class="q-streak"><span class="q-flame" style="--streak:${Math.min(daily.streak || 0, 30)}" aria-hidden="true">🔥</span><strong>${daily.streak || 0}</strong><span>day streak</span></div><div class="q-today-ring" style="--progress:${daily.progress || 0}"><strong>${daily.progress || 0}<small>/3</small></strong><span>today's quest</span></div><div class="q-week-coins">${icons.glyph('coin', 24)}<strong>${Number(creditedWeek) || 0}</strong><span>OpenCoins this week</span></div></div></header>
+<div class="q-log-columns"><section class="q-log-work" aria-labelledby="q-in-progress"><div class="q-section-head"><div><p class="q-eyebrow">KEEP GOING</p><h2 id="q-in-progress">In progress</h2></div><span>${started.length} active</span></div>
+${started.length ? html`<ul class="q-progress-list">${started.map((q) => html`<li class="q-progress-card"><div class="q-progress-head"><span class="q-quest-tile" style="--h:${quests.hueOf(q.id)}">${icons.glyph(icons.quest(q), 30)}</span><div><a href="/quests/${q.id}" class="q-progress-title">${q.title}</a><span class="q-site-chip">${icons.glyph(icons.site(q.site), 16)}${siteName(q.site)}</span></div>${quests.stateChip(false)}</div><p>${q.why}</p><ul class="q-progress-steps">${q.steps.map((step, i) => { const value = Math.min((seen.get(q.id) || new Map()).get(i) || 0, step.count); return html`<li>${icons.glyph(icons.topic(step.event_type, q.site), 18)}<span>${step.label}<progress max="${step.count}" value="${value}" role="progressbar" aria-label="${step.label}" aria-valuemin="0" aria-valuemax="${step.count}" aria-valuenow="${value}" aria-valuetext="${value}/${step.count}${quests.unitOf(step) ? ` ${quests.unitOf(step)}` : ''}">${value}/${step.count}${quests.unitOf(step) ? ` ${quests.unitOf(step)}` : ''}</progress></span><b>${value >= step.count ? '✓' : `${value}/${step.count}${quests.unitOf(step) ? ` ${quests.unitOf(step)}` : ''}`}</b></li>`; })}</ul><div class="q-progress-reward">${quests.medal(q)}<span>Earn the <strong>${q.reward.badge.name}</strong> badge${q.reward.coins > 0 ? html` · ${q.reward.coins} OpenCoins${coinsUi.coinsEnabled ? '' : ' when enabled'}` : ''}</span></div></li>`)}</ul>` : html`<div class="q-empty"><span class="q-quest-tile">${icons.glyph('spark', 30)}</span><p>Nothing started yet. <a href="/quests">Pick a quest</a> — any of the sites you already use counts.</p></div>`}
+<details class="q-completed-fold"><summary><span>Done</span><strong>${finished.length}</strong><small>completed quests</small></summary>${finished.length ? html`<ul class="quest-list">${finished.map((q) => {
                 const c = done.get(q.id);
                 const item = q.reward.item ? (c.item_state === 'granted' ? html`${q.reward.item.emoji} <strong>${q.reward.item.name}</strong> is in <a href="https://inventory.openvibe.network/me">your inventory</a>. ` : c.item_state === 'failed' ? html`${q.reward.item.name} could not be given yet — this is recorded and retried. ` : html`${q.reward.item.name} is on its way to your inventory. `) : '';
                 const coins = c.coins > 0 ? (c.coins_state === 'credited' ? html`<strong>${c.coins}</strong> OpenCoins credited.` : c.coins_state === 'skipped' ? html`${c.coins} OpenCoins ${coinsUi.coinsEnabled ? html`were not credited: ${c.coins_error || 'the daily cap was reached'}` : html`start soon`}.` : html`${c.coins} OpenCoins could not be credited yet — this is recorded and retried.`) : '';
@@ -468,16 +492,13 @@ ${finished.length ? html`<ul class="quest-list">${finished.map((q) => {
     <p class="quest-earned">Completed <time datetime="${c.completed_at}">${String(c.completed_at).slice(0, 10)}</time> · Badge: <strong>${q.reward.badge.name}</strong></p>
     ${item || coins ? html`<p class="quest-why">${item}${coins}</p>` : ''}
     </div></li>`;
-            })}</ul>` : html`<p class="muted">No quests completed yet.</p>`}
-<h2>Your badges</h2>
-${badges.length ? html`<ul class="badges">${badges.map((b) => html`<li><strong>${badge(b.badge_id).name}</strong> <small>${String(b.awarded_at).slice(0, 10)}</small></li>`)}</ul>
-<p class="muted">Anyone can see these three facts at <code>/api/v1/profiles/${subject}/badges</code>: the badge's id, its name and the date. Nothing else about you is ever in that answer.</p>` : html`<p class="muted">No badges yet.</p>`}
-${quests.coinsNote(coinsUi)}
-${coinsUi.coinsEnabled ? html`<p class="muted">Credited today: <strong>${creditedToday}</strong> of ${coinsUi.dailyCap} OpenCoins.</p>` : ''}
-<h2>Not started</h2>
-${catalog.all().filter((q) => questState(q) === 'new').length
-                ? html`<p>${catalog.all().filter((q) => questState(q) === 'new').map((q, i) => html`${i ? ', ' : ''}<a href="/quests/${q.id}">${q.title}</a>`)}</p>`
-                : html`<p class="muted">Every quest is started or done.</p>`}`,
+            })}</ul>` : html`<p class="muted">No quests completed yet.</p>`}</details>
+<p class="q-more-quests"><a href="/quests">Explore quests you have not started ${icons.glyph('arrow-right', 16)}</a></p>
+</section><aside class="q-log-badges" aria-labelledby="q-your-badges"><div class="q-section-head"><div><p class="q-eyebrow">THE COLLECTION</p><h2 id="q-your-badges">Your badges</h2></div><span>${badges.length} earned</span></div><p>Each badge marks a quest you finished. Tap one for its story and a link to share it.</p>
+${badges.length ? html`<ul class="q-badge-grid">${badges.map((b) => badgeTile(b))}</ul>` : html`<p class="muted">No badges yet. Finish a quest to earn your first.</p>`}
+<details class="q-locked-fold"><summary>${locked.length} badges still to earn</summary><ul class="q-badge-grid">${locked.map((q) => badgeTile(q, true))}</ul></details>
+<p class="q-badge-privacy">Anyone can see a badge's id, name and date at <code>/api/v1/profiles/${subject}/badges</code>. Your progress stays private.</p></aside></div>
+<div class="q-log-foot">${quests.coinsNote(coinsUi)}${coinsUi.coinsEnabled ? html`<p class="muted">Credited today: <strong>${creditedToday}</strong> of ${coinsUi.dailyCap} OpenCoins.</p>` : ''}</div>${yourStuff(req)}</div>`,
         });
     });
 

@@ -31,6 +31,7 @@ const { createApi } = require('./http/api');
 const { createPageRoutes } = require('./http/pages');
 const { createCoins } = require('./quests/coins');
 const { createItems } = require('./quests/items');
+const { createDaily } = require('./quests/daily');
 const { createEventsConsumer } = require('./events-consumer');
 const accountDataLib = require('./identity/account-data');
 const { createNetworkSender } = require('openvibe-sdk/account-data');
@@ -70,10 +71,11 @@ async function createApp(opts = {}) {
         : async () => { throw new Error('OV_OAUTH_CLIENT_SECRET is not set: Quest cannot answer account events'); });
     // App quests (server/quests/app-quests.js): quests developer apps define on their own events.
     const appQuests = require('./quests/app-quests').createAppQuests({ s, log });
-    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, items, accountData, accountSend, appQuests, now: s.now, log });
+    const daily = createDaily({ s, config, coins, fetchImpl, aiGenerate: opts.aiGenerate, log });
+    const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, items, accountData, accountSend, appQuests, daily, now: s.now, log });
     // The quests in OpenVibe.Search (./search-index.js), swept on its own timer once server/index.js starts it.
     const searchIndex = opts.searchIndex || createSearchIndex({ config, s, log });
-    const ctx = { config, s, keys, sso, principal, coins, items, eventsConsumer, accountData, accountSend, searchIndex, appQuests, log };
+    const ctx = { config, s, keys, sso, principal, coins, items, daily, eventsConsumer, accountData, accountSend, searchIndex, appQuests, log };
 
     const app = express();
     // GET /openapi.json (SEO-3): this service's public API as OpenAPI 3.1, generated from the contracts

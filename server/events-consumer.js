@@ -44,7 +44,7 @@ const CONSUMER = 'quest';
 const TOPICS = Object.freeze([...catalog.EVENT_TYPES, ...accountDataLib.TOPICS, subjectMerge.TOPIC]);
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
-function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, appQuests = null, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, s, secrets = [], coins = null, items = null, accountData = null, accountSend = null, appQuests = null, daily = null, now = () => Date.now(), log = console }) {
     const keys = (secrets || []).filter((x) => typeof x === 'string' && x.length >= 32);
     // Receipts (quest_event_inbox) are in migrations/0002_quest.sql.
     const inbox = createPgInbox(db, { table: 'quest_event_inbox', now });
@@ -99,7 +99,11 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, items = null,
 
         let outcome;
         try {
-            const r = await inbox.once(CONSUMER, event.event_id, (t) => apply(t, event, { at: new Date(now()).toISOString(), newId: s.newId, appQuests }));
+            const r = await inbox.once(CONSUMER, event.event_id, async (t) => {
+                const applied = await apply(t, event, { at: new Date(now()).toISOString(), newId: s.newId, appQuests });
+                if (daily) applied.dailySubject = await daily.recordEvent(t, event);
+                return applied;
+            });
             if (r.duplicate) { stats.duplicates++; return res.json({ event_id: event.event_id, duplicate: true, outcome: null }); }
             outcome = r.result;
         } catch (err) {
@@ -116,6 +120,9 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, items = null,
         if (coins) for (const completion of outcome.completed) await coins.settle(completion);
         // An item reward the same way (server/quests/items.js): granted in OpenVibe.Inventory after the commit.
         if (items) for (const completion of outcome.completed) await items.settle(completion);
+        if (daily && outcome.dailySubject) {
+            try { await daily.refreshAfterEvent(outcome.dailySubject); } catch (err) { log.warn('[Daily quest] progress refresh failed:', err.message); }
+        }
         return res.json({
             event_id: event.event_id, duplicate: false, outcome: outcome.outcome,
             completed: outcome.completed.map((c) => c.id),

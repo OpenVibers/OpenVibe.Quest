@@ -45,6 +45,11 @@ async function apply(ev, { s, log = console }) {
             ON CONFLICT (subject, badge_id) DO UPDATE SET awarded_at = LEAST(quest_badges.awarded_at, excluded.awarded_at)
             RETURNING 1) SELECT count(*)::int FROM moved`, [from, into]));
         await db.exec('DELETE FROM quest_badges WHERE subject = $1', [from]);
+        await db.exec('INSERT INTO daily_preferences (subject,time_zone) SELECT $2,time_zone FROM daily_preferences WHERE subject=$1 ON CONFLICT (subject) DO NOTHING', [from, into]);
+        await db.exec('DELETE FROM daily_preferences WHERE subject=$1', [from]);
+        await db.exec('UPDATE daily_events SET subject=$2 WHERE subject=$1', [from, into]);
+        await db.exec('INSERT INTO daily_completions (subject,day,completed_at) SELECT $2,day,completed_at FROM daily_completions WHERE subject=$1 ON CONFLICT (subject,day) DO UPDATE SET completed_at=LEAST(daily_completions.completed_at,excluded.completed_at)', [from, into]);
+        await db.exec('DELETE FROM daily_completions WHERE subject=$1', [from]);
         await db.exec('INSERT INTO quest_subject_merges (merge_id, from_subject, into_subject, progress, completions, badges, merged_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
             [mergeId, from, into, progress, completions, badges, at]);
         return { progress, completions, badges };

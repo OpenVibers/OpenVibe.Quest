@@ -17,7 +17,7 @@ const { startTelemetryRetention } = require('openvibe-sdk/telemetry');
 function createLifecycle({ server, ctx, exit, signals, timers = [], extra = [] }) {
     return gracefulStop({
         name: 'OpenVibe.Quest', server, deadlineExitCode: 0, exit, signals, deadlineMs: 10_000,
-        close: [() => { for (const t of timers) clearInterval(t); }, () => ctx.keys.client.stop(), () => ctx.searchIndex.stop(), async () => { clearInterval(ctx.telemetryTick); if (ctx.retention) await ctx.retention.stop(); if (ctx.telemetry) await ctx.telemetry.stop(); }, () => ctx.s.close(), ...extra],
+        close: [() => { for (const t of timers) clearInterval(t); }, ...extra, () => ctx.keys.client.stop(), () => ctx.searchIndex.stop(), async () => { clearInterval(ctx.telemetryTick); if (ctx.retention) await ctx.retention.stop(); if (ctx.telemetry) await ctx.telemetry.stop(); }, () => ctx.s.close()],
     });
 }
 
@@ -40,6 +40,7 @@ async function start() {
     ctx.telemetryTick.unref();
     ctx.keys.client.start();
     ctx.searchIndex.start();
+    const stopDaily = ctx.daily.start();
 
     // Subscribe to the events the catalog counts at OpenVibe.Events (idempotent; off without QUEST_EVENTS_URL
     // and QUEST_EVENTS_SECRET) and come back to OpenCoins a failed credit owes (off unless QUEST_COINS=on).
@@ -55,7 +56,7 @@ async function start() {
     // App quests: each project with an active production quest gets its app.<project_key>.* subscription.
     ctx.appQuests.setSubscriber(subscriptions ? subscriptions.subscribe : null);
     ctx.appQuests.load().catch((err) => console.warn('[Quest] app quests not loaded:', err.message));
-    const extra = [() => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.items.stop()];
+    const extra = [stopDaily, () => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.items.stop()];
     createLifecycle({ server, ctx, timers, extra });
     return { server, ctx };
 }

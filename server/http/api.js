@@ -50,6 +50,28 @@ function createApi(ctx) {
 
     r.get('/ping', limits.reads('quest.api.read'), (_req, res) => res.json({ ok: true, service: config.service }));
 
+    // One network-wide quest each UTC date; progress is counted in the person's chosen IANA time zone.
+    r.get('/daily', limits.reads('quest.daily.read'), async (_req, res) => res.json(await ctx.daily.publicQuest()));
+    r.get('/daily/:date', limits.reads('quest.daily.read'), async (req, res) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) return problem(req, res, 400, 'quest.invalid_date', 'Use YYYY-MM-DD.');
+        const q = await ctx.daily.publicQuest(req.params.date);
+        if (!q) return problem(req, res, 404, 'quest.daily_not_found', 'No quest for that day.');
+        return res.json(q);
+    });
+    r.get('/me/daily', limits.reads('quest.me.read'), async (req, res) => {
+        if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
+        return res.json(await ctx.daily.progress(req.principal.requester.slice(5)));
+    });
+    r.put('/me/daily/time-zone', limits.budget('quest.me.write'), async (req, res) => {
+        if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
+        if (req.principal.viaSession && !require('./principal').sameOrigin(req, config.baseUrl)) return problem(req, res, 403, 'request.cross_site', 'Use the same origin.');
+        if (!require('../quests/daily').validZone(req.body && req.body.time_zone)) return problem(req, res, 422, 'quest.invalid_time_zone', 'Use an IANA time zone.');
+        const subject = req.principal.requester.slice(5);
+        await ctx.daily.setZone(subject, req.body.time_zone);
+        return res.json({ time_zone: req.body.time_zone });
+    });
+    r.get('/step-types', limits.reads('quest.step_type.read'), async (_req, res) => res.json({ step_types: await ctx.daily.allTypes() }));
+
     // ── The catalog (public) ─────────────────────────────────
     r.get('/quests', limits.reads('quest.quests.read'), (_req, res) => res.json({
         sites: catalog.grouped().map((g) => ({
@@ -76,6 +98,18 @@ function createApi(ctx) {
         return next();
     };
     const manage = principal.requireCapability('quest.app_quest.manage');
+    r.post('/step-types', limits.budget('quest.step_type.write'), appOnly, principal.requireCapability('quest.steps.contribute'), async (req, res) => {
+        const row = await ctx.daily.contribute(req.principal.project, req.body);
+        if (row.error) return problem(req, res, 422, 'quest.invalid_step_type', 'Use a known event topic, its site and a secure link on that site.');
+        if (row.project_id !== req.principal.project) return problem(req, res, 409, 'quest.step_type_exists', 'That id belongs to another app.');
+        return res.status(202).json(row);
+    });
+    r.post('/step-types/:id/review', limits.budget('quest.step_type.review'), principal.requireCapability('quest.steps.review'), async (req, res) => {
+        if (req.principal.kind !== 'app' || !String(req.principal.requester).startsWith('service:')) return problem(req, res, 403, 'quest.staff_only', 'Staff review uses a service token.');
+        const row = await ctx.daily.review(req.params.id, req.body && req.body.status);
+        if (!row) return problem(req, res, 404, 'quest.step_type_not_found', 'No step type with that id or review state.');
+        return res.json(row);
+    });
     r.get('/app-quests', limits.reads('quest.app_quest.read'), appOnly, manage, async (req, res) => {
         const rows = await ctx.appQuests.listForProject(req.principal.project);
         res.json({ project_id: req.principal.project, max: ctx.appQuests.MAX_PER_PROJECT, quests: await Promise.all(rows.map((row) => ctx.appQuests.wire(row))) });

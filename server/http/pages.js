@@ -51,7 +51,7 @@ function createPageRoutes(ctx) {
     const r = asyncRouter();
     const PUBLIC_CACHE = cache.htmlHeaders({ maxAge: 300 });
     // The pages with a Markdown twin (openvibe-shared/agent-layer): the public ones only.
-    const TWIN_PATH_RE = /^\/(?:how-it-works|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
+    const TWIN_PATH_RE = /^\/(?:how-it-works|build-a-step-type|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;
     const page = (req, res, o, status = 200) => send(res, status, { viewer: req.viewer, config, path: req.originalUrl, agentLayer: TWIN_PATH_RE.test(String(req.path || '/').split('?')[0]), llms: '/llms.txt', ...o });
     const signedIn = (req) => req.viewer && req.viewer.kind === 'user' && req.viewer.subject;
     const coinsUi = { coinsEnabled: coins.enabled, dailyCap: config.coins.dailyCap, globalDailyCap: config.coins.globalDailyCap };
@@ -142,6 +142,14 @@ function createPageRoutes(ctx) {
 
     r.get('/', async (req, res) => {
         const [appList, p] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse()]);
+        const daily = signedIn(req) ? await ctx.daily.progress(req.viewer.subject) : await ctx.daily.publicQuest();
+        const past = await s.db.many('SELECT day,title FROM daily_quests WHERE day < $1 ORDER BY day DESC LIMIT 14', [daily.date]);
+        const dailyCard = html`<section class="sc-sec q-daily" aria-labelledby="daily-title"><p class="q-daily-kicker">TODAY'S QUEST · ${daily.date}</p>
+<h1 id="daily-title">${daily.title}</h1><p>${daily.story}</p>
+<ol class="q-daily-steps">${daily.steps.map((step) => html`<li><span class="ov-icon" data-icon="${step.site.split('.')[1] || 'quest'}" data-size="32" aria-hidden="true"></span><span>${step.done ? '✓ ' : ''}<a href="${step.href}">${step.sentence}</a><small>${step.site}</small></span></li>`)}</ol>
+<p>${signedIn(req) ? html`${daily.progress} of 3 · ${daily.streak}-day streak` : html`Sign in to track your progress.`} · ${daily.finished_today || 0} finished today</p>
+<a href="/build-a-step-type">Build a step type</a></section>`;
+        const pastFold = html`<details class="q-daily-past"><summary>Past daily quests (${past.length})</summary><ul>${past.map((x) => html`<li><a href="/api/v1/daily/${x.day}">${x.day}: ${x.title}</a></li>`)}</ul></details>`;
         const site = String(config.baseUrl).replace(/\/+$/, '');
         const total = catalog.all().length;
         // The navbar already says OpenVibe.Quest: the hero says what you get, in plain words, and where to start.
@@ -185,9 +193,10 @@ function createPageRoutes(ctx) {
             // The kit's controls (numbers, filters, folds) and its cards and rails; no kit-web.js: the cards carry no
             // menu, and from 760 px the rails wrap into a grid instead of scrolling (public/css/app.css).
             styles: KIT_STYLES,
-            body: raw(foldedHome(html`${raw(hero)}
+            body: raw(foldedHome(html`${dailyCard}${signedIn(req) ? raw(`<script>try{const z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z&&sessionStorage.getItem('quest-zone')!==z){fetch('/api/v1/me/daily/time-zone',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({time_zone:z})}).then(r=>{if(r.ok){sessionStorage.setItem('quest-zone',z);location.reload()}}).catch(()=>{})}}catch{}</script>`) : ''}${raw(hero)}
 ${statsStrip(p)}
 ${yourStuff(req)}
+${pastFold}
 <section class="sc-sec q-rails">
 ${raw(kit.rail({ id: 'the-quests', wrap: true, title: first.some((e) => e.n > 0) ? 'Badges people earn most' : 'Quests to start with', more: { href: '/quests', label: `See all ${total}` }, items: first.map(entryCard) }))}
 <p class="q-kinds-h" aria-hidden="true">Quests by site</p>
@@ -220,6 +229,13 @@ ${raw(showcase.cta({
             }))}`)),
         });
     });
+
+    r.get('/build-a-step-type', async (req, res) => page(req, res, {
+        title: 'Build a step type', description: 'Add a reviewable daily quest step using an OpenVibe.Events topic.', styles: KIT_STYLES,
+        body: html`<main class="sc-sec q-doc"><h1>Build a step type</h1><p>Apps can suggest a daily step on an event Quest already verifies. A staff review is required before it can appear in a daily quest.</p>
+<ol><li>Get an app token for openvibe.quest with <code>quest.steps.contribute</code>.</li><li>Choose a topic from <a href="/api/v1/step-types">the registry</a>. The event must identify the person who did it.</li><li>POST JSON to <code>/api/v1/step-types</code> with <code>id</code>, <code>event_type</code>, <code>site</code>, <code>sentence</code>, <code>href</code> and <code>weight</code> (1–5).</li><li>The API returns a pending type. Staff reviews it before the generator can select it.</li></ol>
+<p>Each selected step needs one real event in the person's local day. The API gives the same quest to everyone; each person's progress remains private.</p></main>`,
+    }));
 
     // ── Every quest: the index the home's See all opens, one site at a time (?site=), as the kit's tabs ──
     r.get('/quests', async (req, res) => {

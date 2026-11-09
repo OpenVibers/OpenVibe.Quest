@@ -1,0 +1,108 @@
+'use strict';
+const assert = require('assert');
+const { boot, check, done } = require('./helpers/boot');
+const { BASE_TYPES, validateSelection, localDay } = require('../server/quests/daily');
+const { ids, serviceAuth } = require('openvibe-contracts');
+
+(async () => {
+    let now = Date.parse('2026-11-08T12:00:00Z');
+    const t = await boot({ now: () => now, aiGenerate: async () => ({
+        steps: ['go-live', 'chat', 'wiki'], title: 'Go somewhere new', story: 'Make the network yours today.',
+    }) });
+    const user = t.network.addUser('daily');
+    try {
+        await check('generator checks topics and sites, and falls back after a bad answer', async () => {
+            assert.strictEqual(validateSelection(['go-live', 'made-up', 'chat'], BASE_TYPES, null), null);
+            assert.strictEqual(validateSelection(['thread', 'reply', 'comment'], BASE_TYPES, null), null);
+            const today = await t.ctx.daily.ensure();
+            assert.deepStrictEqual(today.steps.map((x) => x.id), ['go-live', 'chat', 'wiki']);
+            assert.strictEqual(today.source, 'ai');
+            const same = await t.ctx.daily.ensure();
+            assert.deepStrictEqual(same, today);
+            const bad = require('../server/quests/daily').createDaily({
+                s: t.ctx.s, config: t.config, coins: t.ctx.coins,
+                aiGenerate: async () => ({ steps: ['unknown', 'chat', 'wiki'], title: 'Bad', story: 'Bad' }),
+            });
+            now += 86400000;
+            const next = await bad.ensure();
+            assert.strictEqual(next.source, 'rotation');
+            assert.notDeepStrictEqual(next.steps.map((x) => x.id).sort(), today.steps.map((x) => x.id).sort());
+        });
+        await check('events identify their person and count only in the chosen local day', async () => {
+            now -= 86400000;
+            await t.ctx.daily.setZone(user.subject, 'America/Los_Angeles');
+            assert.strictEqual(localDay('2026-11-08T02:00:00Z', 'America/Los_Angeles'), '2026-11-07');
+            const types = ['live.stream.started', 'chat.room.message.created', 'wiki.revision.created'];
+            for (const [i, event_type] of types.entries()) {
+                const payload = event_type === 'live.stream.started' ? { channel: { subject: { type: 'user', id: user.subject } } }
+                    : event_type === 'chat.room.message.created' ? { user_subject: user.subject } : { author: user.subject };
+                await t.ctx.daily.recordEvent(t.ctx.s.db, {
+                    event_id: `evt_daily_${i}`, event_type, payload,
+                    timestamp: '2026-11-08T18:00:00Z',
+                });
+            }
+            const mine = await t.get('/api/v1/me/daily', { as: user });
+            assert.strictEqual(mine.status, 200);
+            assert.strictEqual(mine.json().progress, 3);
+            assert.strictEqual(mine.json().streak, 1);
+            assert.strictEqual(mine.json().completed, true);
+            const publicView = await t.get('/api/v1/daily');
+            assert.strictEqual(publicView.json().finished_today, 1);
+            assert.ok(!publicView.text.includes(user.subject));
+        });
+        await check('review gates contributed types and streak reads consecutive completions', async () => {
+            const submitted = await t.ctx.daily.contribute('prj_test', {
+                id: 'new-wiki', event_type: 'wiki.revision.created', site: 'openvibe.wiki',
+                sentence: 'Edit a page', href: 'https://openvibe.wiki/', weight: 2,
+            });
+            assert.strictEqual(submitted.status, 'pending');
+            assert.ok(!(await t.ctx.daily.allTypes()).some((x) => x.id === submitted.id));
+            await t.ctx.daily.review(submitted.id, 'approved');
+            assert.ok((await t.ctx.daily.allTypes()).some((x) => x.id === submitted.id));
+            await t.ctx.s.db.exec('INSERT INTO daily_completions (subject,day,completed_at) VALUES ($1,$2,$3)',
+                [user.subject, '2026-11-07', '2026-11-07T20:00:00Z']);
+            assert.strictEqual((await t.ctx.daily.progress(user.subject)).streak, 2);
+        });
+        await check('step type API requires an app capability and a separate staff review', async () => {
+            const project = ids.newId('project');
+            const app = ids.newId('app');
+            const sign = (sub, cap, actor_type, project_id = null) => {
+                const at = Math.floor(Date.now() / 1000);
+                return serviceAuth.signServiceToken({ iss: t.network.url, sub, actor_type, aud: ['openvibe.quest'],
+                    cap: [cap], ns: project_id ? [project_id] : [], ...(project_id ? { project_id } : {}),
+                    env: 'production', iat: at, exp: at + 300, jti: `tok_${Date.now()}` }, t.network.privatePem);
+            };
+            const proposal = { id: 'community-reply', event_type: 'community.post.created', site: 'openvibe.community',
+                sentence: 'Reply to a thread', href: 'https://openvibe.community/', weight: 2 };
+            const denied = await t.get('/api/v1/step-types', { method: 'POST', bearer: sign(`app:${app}`, 'quest.app_quest.manage', 'app', project), json: proposal });
+            assert.strictEqual(denied.status, 403);
+            const created = await t.get('/api/v1/step-types', { method: 'POST', bearer: sign(`app:${app}`, 'quest.steps.contribute', 'app', project), json: proposal });
+            assert.strictEqual(created.status, 202, created.text);
+            assert.strictEqual(created.json().status, 'pending');
+            assert.ok(!(await t.get('/api/v1/step-types')).json().step_types.some(x => x.id === created.json().id));
+            const reviewed = await t.get(`/api/v1/step-types/${encodeURIComponent(created.json().id)}/review`, {
+                method: 'POST', bearer: sign('svc:quest', 'quest.steps.review', 'service'), json: { status: 'approved' },
+            });
+            assert.strictEqual(reviewed.status, 200);
+            assert.ok((await t.get('/api/v1/step-types')).json().step_types.some(x => x.id === created.json().id));
+        });
+        await check('enabled OpenCoins credit a daily completion once', async () => {
+            const c = await boot({ now: () => Date.parse('2026-11-08T20:00:00Z'), env: { QUEST_COINS: 'on' },
+                aiGenerate: async () => ({ steps: ['go-live', 'chat', 'wiki'], title: 'Around the network', story: 'Three places today.' }) });
+            try {
+                const coinUser = c.network.addUser('coin-daily');
+                await c.ctx.daily.setZone(coinUser.subject, 'UTC');
+                for (const [i, event_type] of ['live.stream.started', 'chat.room.message.created', 'wiki.revision.created'].entries()) {
+                    const payload = event_type === 'live.stream.started' ? { channel: { subject: { type: 'user', id: coinUser.subject } } }
+                        : event_type === 'chat.room.message.created' ? { user_subject: coinUser.subject } : { author: coinUser.subject };
+                    await c.ctx.daily.recordEvent(c.ctx.s.db, { event_id: `evt_coins_${i}`, event_type, payload, timestamp: '2026-11-08T19:00:00Z' });
+                }
+                await c.ctx.daily.progress(coinUser.subject);
+                await c.ctx.daily.progress(coinUser.subject);
+                const rows = await c.ctx.s.db.many('SELECT coins,coins_state FROM quest_completions WHERE subject=$1 AND quest_id=$2', [coinUser.subject, 'daily-2026-11-08']);
+                assert.deepStrictEqual(rows.map(r => [Number(r.coins), r.coins_state]), [[5, 'credited']]);
+            } finally { await c.close(); }
+        });
+    } finally { await t.close(); }
+    done();
+})().catch((err) => { process.stderr.write(String(err.stack || err) + '\n'); process.exit(1); });

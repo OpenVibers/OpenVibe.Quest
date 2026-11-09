@@ -25,6 +25,8 @@ subscribes to.
 
 OpenVibe.Quest owns the quest log and the catalog that describes it.
 
+The home page leads with one shared daily quest. A due-based job chooses three verified Events step types across at least two sites, asks OpenVibe.AI to favor recent network changes, and rotates a hand-written set when AI is unavailable. GET `/api/v1/daily` is public; GET `/api/v1/me/daily` returns the caller's private checklist and streak. PUT `/api/v1/me/daily/time-zone` stores an IANA time zone for local-day counting. Apps with `quest.steps.contribute` can POST `/api/v1/step-types`; staff must approve a proposal before the generator can use it.
+
 - The **quest catalog** in code ([server/quests/catalog.js](server/quests/catalog.js)): 12 first-party quests, each
   with its steps, the events that count them, its badge, its OpenCoins and any item reward, plus the list of events
   Quest listens to. A quest may not count an event the catalog does not document; that fails at load.

@@ -35,6 +35,9 @@ function caller(req) {
 const BUDGETS = {
     // An app defining or retiring its quests (server/quests/app-quests.js).
     'quest.app_quest.write': { minute: 20, hour: 200 },
+    'quest.me.write': { minute: 6, hour: 30 },
+    'quest.step_type.write': { minute: 5, hour: 30 },
+    'quest.step_type.review': { minute: 20, hour: 200 },
 };
 
 function createCallerLimits({ config, now = () => Date.now(), registry = null, log = console, enabled = true, valkey = null }) {

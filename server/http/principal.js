@@ -22,7 +22,7 @@ const PRINCIPAL_SUB = /^(svc|app|mod|agent):/;
 const PROJECT_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
 // Every other route is public or a person reading their own log (no capability). App quests are the one exception:
 // a developer app (an app token with a project) defines its own quests with quest.app_quest.manage (contracts 0.193.0).
-const CAPABILITIES = ['quest.app_quest.manage'];
+const CAPABILITIES = ['quest.app_quest.manage', 'quest.steps.contribute', 'quest.steps.review'];
 
 function decodePayload(token) {
     const parts = String(token || '').split('.');
@@ -90,6 +90,9 @@ function createPrincipal({ config, keys }) {
                 if (p.viaSession && req.method !== 'GET' && !sameOrigin(req, config.baseUrl)) return http.sendProblem(res, 403, 'request.cross_site', { detail: 'A signed-in request that changes something must come from openvibe.quest itself.', ctx: req.ov });
                 return next();
             }
+            // Contracts is released separately. A verified token can carry Quest's new capability before this
+            // service's pinned catalog knows its metadata; the exact signed cap remains the authorization check.
+            if (cap.startsWith('quest.steps.') && Array.isArray(p.claims.cap) && p.claims.cap.includes(cap)) return next();
             const decision = capabilities.check(p.claims, cap);
             if (decision.allowed) return next();
             return http.sendProblem(res, 403, decision.code || 'capability.denied', { detail: decision.reason || `${cap} not granted`, ctx: req.ov });

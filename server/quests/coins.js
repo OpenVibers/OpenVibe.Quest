@@ -37,7 +37,8 @@ const SCOPES = 'identity.subject.resolve network.coins.credit';
 const TIMEOUT_MS = 5000;
 
 /** How a completion is told apart in the ledger row (never anything about the person). */
-const coinsRef = (questId) => `https://openvibe.quest/quests/${questId}`;
+const coinsRef = (questId) => String(questId).startsWith('daily-')
+    ? 'https://openvibe.quest/' : `https://openvibe.quest/quests/${questId}`;
 
 function createCoins({ config, s, fetchImpl = globalThis.fetch, log = console, now = () => Date.now() }) {
     const enabled = config.coins.mode === 'on';
@@ -88,7 +89,7 @@ function createCoins({ config, s, fetchImpl = globalThis.fetch, log = console, n
     /** Credit one completion. Throws with a short, safe reason; never logs a token or a body. */
     async function credit(completion) {
         const quest = catalog.byId(completion.quest_id);
-        if (!quest) throw new Error(`no quest ${completion.quest_id} in the catalog`);
+        if (!quest && !/^daily-\d{4}-\d{2}-\d{2}$/.test(completion.quest_id)) throw new Error(`no quest ${completion.quest_id} in the catalog`);
         const userId = await networkUserId(completion.subject);
         if (!userId) throw new Error('the Network has no account for this subject yet');
         const out = await call('POST', '/internal/coins/credit', {
@@ -96,8 +97,8 @@ function createCoins({ config, s, fetchImpl = globalThis.fetch, log = console, n
                 user_id: userId,
                 app_id: APP_ID,
                 amount: completion.coins,
-                reason: `quest:${quest.id}`,
-                ref: coinsRef(quest.id),
+                reason: `quest:${completion.quest_id}`,
+                ref: coinsRef(completion.quest_id),
                 idempotency_key: completion.id,
             },
         });

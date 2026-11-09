@@ -195,3 +195,14 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td[data-label]:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted, #7386a3); }
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td:empty { display: none; }
 }
+
+/* One shared daily quest, before the catalog. */
+.q-daily { border: 1px solid var(--ov-border, #8886); border-radius: 18px; padding: clamp(20px, 4vw, 36px); margin-block: 20px; background: var(--ov-surface, transparent); }
+.q-daily-kicker { font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.q-daily h1 { margin: .2em 0; font-size: clamp(1.5rem, 4vw, 2.4rem); }
+.q-daily-steps { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 8px; }
+.q-daily-steps li { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--ov-border, #8886); border-radius: 12px; }
+.q-daily-steps small { display: block; opacity: .7; }
+.q-daily-past { margin: 12px auto 28px; max-width: 1200px; padding: 12px 20px; }
+.q-daily-past summary { cursor: pointer; min-height: 44px; }
+.q-doc { max-width: 780px; margin-inline: auto; }

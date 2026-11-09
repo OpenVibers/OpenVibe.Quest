@@ -21,7 +21,12 @@ const READ = 'quest.api.read';
     const sam = t.network.addUser('sam');
 
     await check('BUDGETS: the product declares its own expensive routes (an app defining its quests)', () => {
-        assert.deepStrictEqual(BUDGETS, { 'quest.app_quest.write': { minute: 20, hour: 200 } });
+        assert.deepStrictEqual(BUDGETS, {
+            'quest.app_quest.write': { minute: 20, hour: 200 },
+            'quest.me.write': { minute: 6, hour: 30 },
+            'quest.step_type.write': { minute: 5, hour: 30 },
+            'quest.step_type.review': { minute: 20, hour: 200 },
+        });
     });
 
     await check('a read: 3 a minute per address, then 429 rate_limited with Retry-After; another address passes', async () => {

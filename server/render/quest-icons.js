@@ -1,0 +1,38 @@
+'use strict';
+
+const { NAMES } = require('openvibe-shared/glyphs');
+const catalog = require('../quests/catalog');
+const { html } = require('./html');
+
+const available = new Set(NAMES);
+const TOPICS = Object.freeze({
+    'live.stream.started': 'live', 'network.follow.created': 'heart',
+    'community.thread.created': 'chat', 'community.post.created': 'reply',
+    'community.comment.created': 'quote', 'chat.room.message.created': 'chat',
+    'wiki.revision.created': 'book-open', 'tools.job.created': 'wrench',
+    'mediahub.video.published': 'clapper', 'mediahub.picture.uploaded': 'camera',
+    'deals.vote.changed': 'thumbs-up', 'blog.post.published': 'pencil',
+    'games.world.published': 'globe',
+});
+const SITES = Object.freeze({
+    'openvibe.live': 'live', 'openvibe.network': 'globe', 'openvibe.community': 'chat',
+    'openvibe.chat': 'chat', 'openvibe.wiki': 'book-open', 'openvibe.tools': 'wrench',
+    'openvibe.video': 'clapper', 'openvibe.pics': 'camera', 'openvibe.deals': 'tag',
+    'openvibe.blog': 'pencil', 'openvibe.games': 'game',
+});
+
+const safe = (name, fallback = 'quest') => available.has(name) ? name : fallback;
+const topic = (eventType, site) => safe(TOPICS[eventType] || SITES[site]);
+const site = (domain) => safe(SITES[domain] || String(domain || '').replace(/^openvibe\./, ''));
+const quest = (q) => topic(q.steps?.[0]?.event_type, q.site);
+const badge = (id, q) => safe(catalog.BADGE_ICONS[id] || (q && quest(q)));
+function glyph(name, size = 24, approvedSvg = null) {
+    if (approvedSvg) {
+        const doc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8fa4dd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${approvedSvg}</svg>`;
+        return html`<img class="q-reviewed-glyph" src="data:image/svg+xml,${encodeURIComponent(doc)}" width="${size}" height="${size}" alt="">`;
+    }
+    return html`<span class="ov-icon" data-icon="${safe(name)}" data-size="${size}" aria-hidden="true"></span>`;
+}
+const needsDraft = (eventType, domain) => !TOPICS[eventType] && !SITES[domain];
+
+module.exports = { TOPICS, SITES, safe, topic, site, quest, badge, glyph, needsDraft };

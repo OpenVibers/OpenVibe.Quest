@@ -8,6 +8,7 @@
 const kit = require('openvibe-shared/kit');
 const catalog = require('../quests/catalog');
 const art = require('./badge-art');
+const icons = require('./quest-icons');
 const { html } = require('./html');
 
 /**
@@ -74,7 +75,7 @@ function hueOf(id) {
 
 /** The badge as a medal: its initials on a ring of its colour (decorative; the name is always written beside it). */
 function medal(quest, { earned = false } = {}) {
-    return html`<span class="medal${earned ? ' earned' : ''}" style="--h:${hueOf(quest.id)}" aria-hidden="true">${art.initials(quest.reward.badge.name || quest.title)}</span>`;
+    return html`<span class="medal${earned ? ' earned' : ''}" style="--h:${hueOf(quest.id)}" aria-hidden="true">${icons.glyph(icons.badge(quest.reward.badge.id, quest), 28)}</span>`;
 }
 
 // ── The home's cards: a quest, a series or an app's quest as the shared kit's card (openvibe-shared kit.card), its
@@ -114,8 +115,8 @@ function appKitCard(q) {
 }
 
 /** The SVG for a badge card (render/badge-art.js): a quest's, a series' (its count on the medal) or an app quest's. */
-const badgeSvg = (quest) => art.svg({ hue: hueOf(quest.id), mark: art.initials(quest.reward.badge.name || quest.title), name: quest.reward.badge.name });
-const seriesSvg = (series) => art.svg({ hue: hueOf(series.id), mark: String(series.quests.length), name: `${series.quests.length} quests, a badge each` });
+const badgeSvg = (quest) => art.svg({ hue: hueOf(quest.id), mark: art.initials(quest.reward.badge.name || quest.title), icon: icons.badge(quest.reward.badge.id, quest), name: quest.reward.badge.name });
+const seriesSvg = (series) => art.svg({ hue: hueOf(series.id), mark: String(series.quests.length), icon: 'layers', name: `${series.quests.length} quests, a badge each` });
 
 /** "Earned by 3 people": how many have a quest's badge (a count, never who), or nothing at 0. */
 function earnedBy(n) {
@@ -139,11 +140,11 @@ const stateChip = (done, locked = false) => (locked && !done
 function stepLine(step, i, seen) {
     const unit = unitOf(step);
     if (!seen) {
-        return html`<li>${step.label}${step.count > 1 ? html` <span class="step-count">×${step.count}</span>` : ''}</li>`;
+        return html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 18)}<span>${step.label}</span>${step.count > 1 ? html` <span class="step-count">×${step.count}</span>` : ''}</li>`;
     }
     const value = Math.min(seen.get(i) || 0, step.count);
     const text = fraction(value, step.count, unit);
-    return html`<li>${step.label}<span class="step-progress">${bar(value, step.count, text, step.label)}<span class="progress-count">${text}</span></span></li>`;
+    return html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 18)}<span>${step.label}</span><span class="step-progress">${bar(value, step.count, text, step.label)}<span class="progress-count">${text}</span></span></li>`;
 }
 
 /**
@@ -159,7 +160,7 @@ function card(quest, { coinsEnabled = false, earned = false, counts = null, seen
     return html`<li class="quest${done ? ' is-completed' : ''}">
     ${medal(quest, { earned: done })}
     <div class="quest-main">
-    <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a> ${stateChip(done)}
+    <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a> <span class="q-site-chip">${icons.glyph(icons.site(quest.site), 16)}${shortSite(quest.site)}</span> ${stateChip(done)}
     <p class="quest-why">${quest.why}</p>
     <ul class="quest-steps">${quest.steps.map((s, i) => stepLine(s, i, stepSeen))}</ul>
     <p class="quest-reward">${reward(quest, { coinsEnabled })}</p>
@@ -214,7 +215,7 @@ function list(groups = catalog.grouped(), { coinsEnabled = false, counts = null,
         completedAt: completed ? (completed.get(q.id) || null) : null,
     });
     return html`${groups.map((g) => html`<section class="site-group" aria-labelledby="${anchor(g.site)}">
-    <h3 id="${anchor(g.site)}"><a href="https://${g.site}">${String(g.name).replace(/^OpenVibe\./, '')}</a><span class="site-count">${count(g)} quest${count(g) === 1 ? '' : 's'}</span>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
+    <h3 id="${anchor(g.site)}">${icons.glyph(icons.site(g.site), 22)}<a href="https://${g.site}">${String(g.name).replace(/^OpenVibe\./, '')}</a><span class="site-count">${count(g)} quest${count(g) === 1 ? '' : 's'}</span>${g.what ? html` <small>${g.what}</small>` : ''}</h3>
     <ul class="quest-list">${g.quests.map(cardFor)}${(g.series || []).map((x) => seriesCard(x, { coinsEnabled, counts }))}</ul>
 </section>`)}`;
 }

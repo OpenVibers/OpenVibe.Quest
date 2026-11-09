@@ -41,6 +41,8 @@ function load(env = process.env) {
         // OpenVibe.Network: SSO (OAuth2 authorization server with PKCE) and its JWKS.
         networkUrl,
         networkInternalUrl: trim(env.OV_NETWORK_INTERNAL_URL || 'http://127.0.0.1:4000'),
+        designInternalUrl: trim(env.OV_DESIGN_INTERNAL_URL || 'http://127.0.0.1:5090'),
+        designDrafts: isProduction && env.QUEST_DESIGN_DRAFTS !== 'off',
         networkIssuer: trim(env.OV_NETWORK_ISSUER || networkUrl),
         // The audience this service's app, agent and service tokens carry.
         audience: env.QUEST_AUDIENCE || 'openvibe.quest',

@@ -66,7 +66,7 @@ function wireType(t) {
         status: t.status, source: t.source || t.project_id };
 }
 
-function createDaily({ s, config, coins, fetchImpl = globalThis.fetch, aiGenerate, log = console }) {
+function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, aiGenerate, log = console }) {
     const db = s.db;
     const token = config.oauth.clientSecret ? serviceAuth.createTokenClient({
         tokenUrl: `${config.networkInternalUrl}/oauth/token`, clientId: config.oauth.clientId,
@@ -127,7 +127,10 @@ function createDaily({ s, config, coins, fetchImpl = globalThis.fetch, aiGenerat
     }
     const pending = new Map();
     async function ensure(day = utcDay(s.now())) {
-        if (!pending.has(day)) pending.set(day, create(day).finally(() => pending.delete(day)));
+        if (!pending.has(day)) pending.set(day, create(day).then((q) => {
+            if (q && glyphs) void glyphs.request(glyphs.nameForDaily(day), `${q.title}. ${q.story}`);
+            return q;
+        }).finally(() => pending.delete(day)));
         return pending.get(day);
     }
     async function publicQuest(day = utcDay(s.now())) {

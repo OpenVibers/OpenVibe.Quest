@@ -250,7 +250,7 @@ function terms() {
 function coinsNote({ coinsEnabled, dailyCap, globalDailyCap }) {
     if (!coinsEnabled) {
         return html`<p class="muted">OpenCoins rewards start soon. A completion is recorded now, and no OpenCoins move
-while <code>QUEST_COINS</code> is off. OpenCoins are loyalty points, never money — and never Vibes.</p>`;
+until rewards are switched on. OpenCoins are loyalty points, never money, and never Vibes.</p>`;
     }
     return html`<p class="muted">Completing a quest credits OpenCoins through OpenVibe.Network's wallet, within
 ${dailyCap} OpenCoins per person per day and ${globalDailyCap} for everyone together. OpenCoins are loyalty points,

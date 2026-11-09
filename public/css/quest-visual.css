@@ -116,3 +116,14 @@
     .q-badge-sheet { animation: none; }
     .q-badge.is-new .q-badge-medal { animation: q-badge-fade .3s ease both; }
 }
+
+/* Review, 2026-11-09 (Opus): the ring holds only its number, a badge always says its name, and words stay plain. */
+.q-today-ring::before { top: 12px; }
+.q-today-ring strong { display: grid; place-items: center; width: 60px; height: 60px; margin: 0 0 4px; font-size: 1.25rem; }
+.q-today-ring strong small { display: inline; }
+.q-badge > summary { grid-template-rows: auto auto; gap: 6px; align-content: start; padding: 4px 2px; }
+.q-badge-name { max-width: 100%; color: var(--text-secondary, #b5c2d7); font-size: .72rem; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+.q-badge.is-locked .q-badge-name { color: var(--text-muted, #8b98ad); }
+.q-today-ring strong { display: flex; align-items: baseline; justify-content: center; padding-top: 18px; box-sizing: border-box; }
+.q-badge-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px 6px; }
+.q-badge-name { overflow-wrap: break-word; }

@@ -142,25 +142,31 @@ function createPageRoutes(ctx) {
         return html;
     }
 
+    // Today's quest: one card. Its head is the day in words and the quest's own icon; each step is one row to press
+    // (the whole row is the link), with a tick when it is done; the foot says where the person stands and how many
+    // people finished today. The developer's link ("Build a step type") is with the other developer links, in How it
+    // works: it is not a step of today's quest.
+    const dayWords = (iso) => { const d = new Date(`${iso}T12:00:00Z`); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }); };
+    // One renderer for the home (where its title is the page's h1) and the catalog (an h2): they were two cards
+    // with different markup, wording and dates for the same quest.
+    function dailyCardOf(req, daily, approvedGlyphs, tag = 'h1') {
+        const stepCount = daily.steps.length;
+        const doneCount = daily.steps.filter((x) => x.done).length;
+        const finishedToday = Number(daily.finished_today) || 0;
+        return html`<section class="q-daily" aria-labelledby="daily-title">
+<header class="q-daily-head"><span class="q-daily-icon">${icons.glyph('spark', 28, approvedGlyphs.get(nameForDaily(daily.date)))}</span><p class="q-daily-kicker"><b>Today's quest</b><time datetime="${daily.date}">${dayWords(daily.date)}</time></p></header>
+${raw(`<${tag} id="daily-title" class="q-daily-title">`)}${daily.title}${raw(`</${tag}>`)}<p class="q-daily-story">${daily.story}</p>
+<ol class="q-daily-steps">${daily.steps.map((step) => html`<li${step.done ? raw(' class="is-done"') : ''}><a href="${step.href}"><span class="q-daily-ic">${icons.glyph(step.done ? 'check' : icons.topic(step.event_type, step.site), 22)}</span><span class="q-daily-t"><b>${step.sentence}</b><small>${step.done ? 'Done · ' : ''}${step.site}</small></span><span class="q-daily-go" aria-hidden="true"></span></a></li>`)}</ol>
+<p class="q-daily-foot">${signedIn(req)
+        ? html`<span class="q-daily-dots" role="img" aria-label="${doneCount} of ${stepCount} steps done">${daily.steps.map((x) => html`<i${x.done ? raw(' class="is-on"') : ''}></i>`)}</span><b>${doneCount} of ${stepCount}</b>${Number(daily.streak) > 1 ? html`<span>${daily.streak}-day streak</span>` : ''}`
+        : html`<a class="ovk-btn ovk-btn--primary" href="/auth/login?next=${encodeURIComponent(req.path || '/')}">Sign in to track it</a>`}${finishedToday ? html`<span class="q-daily-n">${finishedToday.toLocaleString('en-US')} ${finishedToday === 1 ? 'person' : 'people'} finished today</span>` : ''}</p></section>`;
+    }
+
     r.get('/', async (req, res) => {
         const [appList, p, approvedGlyphs] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse(), ctx.glyphs.approved()]);
         const daily = signedIn(req) ? await ctx.daily.progress(req.viewer.subject) : await ctx.daily.publicQuest();
         const past = await s.db.many('SELECT day,title FROM daily_quests WHERE day < $1 ORDER BY day DESC LIMIT 14', [daily.date]);
-        // Today's quest: one card. Its head is the day in words and the quest's own icon; each step is one row to press
-        // (the whole row is the link), with a tick when it is done; the foot says where the person stands and how many
-        // people finished today. The developer's link ("Build a step type") is with the other developer links, in How it
-        // works: it is not a step of today's quest.
-        const dayWords = (iso) => { const d = new Date(`${iso}T12:00:00Z`); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }); };
-        const stepCount = daily.steps.length;
-        const doneCount = daily.steps.filter((x) => x.done).length;
-        const finishedToday = Number(daily.finished_today) || 0;
-        const dailyCard = html`<section class="q-daily" aria-labelledby="daily-title">
-<header class="q-daily-head"><span class="q-daily-icon">${icons.glyph('spark', 28, approvedGlyphs.get(nameForDaily(daily.date)))}</span><p class="q-daily-kicker"><b>Today's quest</b><time datetime="${daily.date}">${dayWords(daily.date)}</time></p></header>
-<h1 id="daily-title">${daily.title}</h1><p class="q-daily-story">${daily.story}</p>
-<ol class="q-daily-steps">${daily.steps.map((step) => html`<li${step.done ? raw(' class="is-done"') : ''}><a href="${step.href}"><span class="q-daily-ic">${icons.glyph(step.done ? 'check' : icons.topic(step.event_type, step.site), 22)}</span><span class="q-daily-t"><b>${step.sentence}</b><small>${step.done ? 'Done · ' : ''}${step.site}</small></span><span class="q-daily-go" aria-hidden="true"></span></a></li>`)}</ol>
-<p class="q-daily-foot">${signedIn(req)
-        ? html`<span class="q-daily-dots" role="img" aria-label="${doneCount} of ${stepCount} steps done">${daily.steps.map((x) => html`<i${x.done ? raw(' class="is-on"') : ''}></i>`)}</span><b>${doneCount} of ${stepCount}</b>${Number(daily.streak) > 1 ? html`<span>${daily.streak}-day streak</span>` : ''}`
-        : html`<a class="ovk-btn ovk-btn--primary" href="/auth/login?next=%2F">Sign in to track it</a>`}${finishedToday ? html`<span class="q-daily-n">${finishedToday.toLocaleString('en-US')} ${finishedToday === 1 ? 'person' : 'people'} finished today</span>` : ''}</p></section>`;
+        const dailyCard = dailyCardOf(req, daily, approvedGlyphs, 'h1');
         // Earlier days, as a counted fold. A row is the day and the quest's name; it links nowhere (the only address a
         // past day has is its JSON, which is for programs, and is listed on How it works).
         const pastFold = past.length ? html`<details class="q-daily-past"><summary><span>Earlier daily quests</span><span class="q-daily-past-n">${past.length}</span></summary><ul>${past.map((x) => html`<li><time datetime="${x.day}">${dayWords(x.day)}</time><span>${x.title}</span></li>`)}</ul></details>` : '';
@@ -287,7 +293,7 @@ ${raw(showcase.cta({
             localStyles: ['css/quest-visual.css'],
             body: html`<h1>${one ? html`Quests on ${one.name}` : 'All quests'}</h1>
 <p class="lede">${one ? html`${count(one)} quest${count(one) === 1 ? '' : 's'} on <a href="https://${one.site}">${one.name}</a>${one.what ? html`, ${one.what}` : ''}.` : html`${total} quests on ${siteCount} OpenVibe sites, grouped by the site whose events each one counts.`} Each pays a badge; how many people hold it is a count, never who.</p>
-${daily ? html`<section class="q-index-daily" aria-labelledby="q-index-daily-title"><div class="q-index-daily-copy"><span class="q-index-daily-icon">${icons.glyph('spark', 32, approvedGlyphs.get(nameForDaily(daily.date)))}</span><p class="q-eyebrow">TODAY'S SHARED QUEST · ${daily.date}</p><h2 id="q-index-daily-title">${daily.title}</h2><p>${daily.story}</p><span class="q-index-daily-count">${signedIn(req) ? `${daily.progress} of 3 complete` : `${daily.finished_today || 0} finished today`}</span></div><ol>${daily.steps.map((step) => html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 24)}<span><a href="${step.href}">${step.sentence}</a><small>${quests.shortSite(step.site)}</small></span>${step.done ? html`<span class="q-step-check">✓</span>` : ''}</li>`)}</ol></section>` : ''}
+${daily ? dailyCardOf(req, daily, approvedGlyphs, 'h2') : ''}
 ${raw(kit.tabs({ base: '/quests', param: 'site', label: 'Quests by site', active, items: [{ key: 'all', label: 'All', count: total, href: '/quests' }, ...groups.map((g) => ({ key: siteKey(g.site), label: quests.shortSite(g.site), count: count(g) }))] }))}
 ${quests.list(shown, { ...coinsUi, counts: p.byQuest, seen: mine ? seen : null, completed: mine ? completed : null })}
 ${appList.length ? html`<section class="site-group" id="app-quests" aria-labelledby="app-quests-h"><h2 id="app-quests-h">Made by apps</h2>

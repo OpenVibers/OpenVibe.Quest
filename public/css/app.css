@@ -208,7 +208,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-daily-kicker { display: grid; gap: 1px; margin: 0; min-width: 0; }
 .q-daily-kicker b { font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-light, #8ab8ff); }
 .q-daily-kicker time { color: var(--text-muted, #7386a3); font-size: .9rem; }
-.q-daily h1 { margin: 14px 0 6px; font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.15; letter-spacing: -.015em; }
+.q-daily .q-daily-title { margin: 14px 0 6px; font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.15; letter-spacing: -.015em; }
 .q-daily-story { margin: 0; color: var(--text-secondary, #96a7c2); max-width: 62ch; }
 .q-daily-steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .q-daily-steps a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--border, #1f2d47); border-radius: 14px;

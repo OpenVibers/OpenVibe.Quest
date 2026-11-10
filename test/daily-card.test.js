@@ -30,8 +30,14 @@ const icons = require('../server/render/quest-icons');
         assert.strictEqual(rows.length, 3, 'three steps, each one row to press');
         rows.forEach((m) => assert.match(m[1], /^https:\/\/[a-z0-9.-]+\//, 'a step links to where it is done'));
         assert.match(card, /<a class="ovk-btn ovk-btn--primary" href="\/auth\/login\?next=%2F">Sign in to track it<\/a>/, 'signed out: one button');
+        assert.match(card, /<h1 id="daily-title" class="q-daily-title">/, 'on the home its title is the page\'s h1');
         assert.ok(!card.includes('Build a step type') && !card.includes('/build-a-step-type'), 'the developer link is not in today\'s card');
         assert.match(home.text, /Building an app\? <a href="\/build-a-step-type">Suggest a step for the daily quest<\/a>/, 'it is with How it works');
+
+        // The catalog shows the same card (its title an h2), not a second one of its own.
+        const catalog = await t.get('/quests');
+        assert.match(catalog.text, /<section class="q-daily"[^>]*>[\s\S]*?<h2 id="daily-title" class="q-daily-title">/);
+        assert.match(catalog.text, /href="\/auth\/login\?next=%2Fquests">Sign in to track it<\/a>/, 'signing in comes back to the page you were on');
 
         // Nothing on the page asks for a site mark that does not exist (that is what drew the "V").
         const asked = Array.from(home.text.matchAll(/class="ov-icon" data-icon="([^"]+)"/g)).map((m) => m[1]);

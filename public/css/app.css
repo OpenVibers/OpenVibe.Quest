@@ -95,7 +95,6 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .terms strong { color: var(--text-primary, #e6edf7); }
 .quest-series { border-style: dashed; }
 .quest-series .medal { font-size: 1.15rem; }
-@media (prefers-reduced-motion: reduce) { .quest { transition: none; } }
 .steps { margin: .4rem 0; }
 .done { color: var(--success-text, var(--success, #22c55e)); font-weight: 700; }
 .progress { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr auto; gap: .5rem; align-items: center; margin: .3rem 0; font-size: .9rem; }
@@ -230,7 +229,6 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-daily-dots i.is-on { background: var(--success, #22c55e); }
 .q-daily-n { margin-left: auto; }
 @media (max-width: 520px) { .q-daily-n { margin-left: 0; flex-basis: 100%; } .q-daily-foot .ovk-btn { flex: 1 1 auto; justify-content: center; } }
-@media (prefers-reduced-motion: reduce) { .q-daily-steps a { transition: none; } }
 /* Earlier days: a counted fold, the day in words and the quest's name. */
 .q-daily-past { margin: 0 0 22px; border: 1px solid var(--border, #1f2d47); border-radius: 14px; background: var(--bg-card, #131c2e); }
 .q-daily-past summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; font-weight: 650; cursor: pointer; list-style: none; }

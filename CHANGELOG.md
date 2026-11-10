@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add the authenticated, network-origin CORS reader `GET /api/v1/quests/today`; keep progress private to its person.
+
 What changed in OpenVibe.Quest, newest first. Each site also publishes its patch notes at /updates.
 
 ## 0.3.0 — 2026-10-09

@@ -250,3 +250,20 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
     .page .sc-sec:has(> .hm-fold-block) > .hm-fold-block > summary { min-height: 56px; }
     .page .sc-sec:has(> .hm-fold-block[open]) { padding-bottom: 18px; }
 }
+
+/* The catalog on a phone: 22 cards, each a screen-third tall, made a page of 9,000 px. A smaller medal and less
+   padding give the words the width, and a reward chip says the reward (its caption, "on your profile", stays for a
+   screen reader and in the chip's title): the three chips sit in one or two rows, not three. */
+@media (max-width: 640px) {
+    .quest { grid-template-columns: 44px minmax(0, 1fr); gap: 10px; padding: 12px; }
+    .quest .medal { width: 44px; height: 44px; }
+    .quest-why { margin-bottom: 8px; }
+    .quest-steps { margin-bottom: 8px; }
+    .reward { gap: 5px; }
+    .reward-badge, .reward-coins, .reward-item { padding: 3px 9px; }
+    .quest .reward-badge small, .quest .reward-item small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .site-group { margin-top: 18px; }
+}
+/* Under a site's own heading a card does not repeat the site (say it once); the chip stays wherever a card stands
+   alone, on a quest's page and in the quest log. */
+.site-group .quest .q-site-chip { display: none; }

@@ -99,11 +99,6 @@
     .q-badge-sheet { left: auto; right: max(16px, calc((100vw - 1080px) / 2)); bottom: auto; top: 25%; width: 340px; }
 }
 @media (max-width: 350px) { .q-badge-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .q-log-stats > div { min-height: 99px; } }
-@media (prefers-reduced-motion: reduce) {
-    .q-progress-card, .q-badge-medal { transition: none; }
-    .q-badge-sheet { animation: none; }
-    .q-badge.is-new .q-badge-medal { animation: q-badge-fade .3s ease both; }
-}
 
 /* Review, 2026-11-09 (Opus): the ring holds only its number, a badge always says its name, and words stay plain. */
 .q-today-ring::before { top: 12px; }

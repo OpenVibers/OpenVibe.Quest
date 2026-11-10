@@ -208,3 +208,11 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-daily-past { margin: 12px auto 28px; max-width: 1200px; padding: 12px 20px; }
 .q-daily-past summary { cursor: pointer; min-height: 44px; }
 .q-doc { max-width: 780px; margin-inline: auto; }
+
+/* On a phone a folded section is one row: the section's own top and bottom room (made to hold a heading and its
+   content) left a closed fold floating in a third of a screen of nothing. */
+@media (max-width: 640px) {
+    .page .sc-sec:has(> .hm-fold-block) { margin-block: 0; padding-block: 2px; }
+    .page .sc-sec:has(> .hm-fold-block) > .hm-fold-block > summary { min-height: 56px; }
+    .page .sc-sec:has(> .hm-fold-block[open]) { padding-bottom: 18px; }
+}

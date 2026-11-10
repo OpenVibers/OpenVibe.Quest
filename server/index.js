@@ -47,6 +47,10 @@ async function start() {
     const secret = config.events.secrets[0] || '';
     const subscriptions = require('./events-consumer').startSubscriptions({ config, port: config.port, secret });
     const timers = [];
+    const levelsTimer = setInterval(() => ctx.levels.retryPending().catch(() => {}), 30000);
+    levelsTimer.unref();
+    timers.push(levelsTimer);
+    ctx.levels.retryPending().catch(() => {});
     const coinsTimer = ctx.coins.start();
     if (coinsTimer) timers.push(coinsTimer);
     // Item rewards owed (a failed grant, or a completion from before items) are granted by the same kind of timer.

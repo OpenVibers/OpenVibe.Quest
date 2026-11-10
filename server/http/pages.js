@@ -51,6 +51,19 @@ function questDescription(quest) {
 function createPageRoutes(ctx) {
     const { config, s, coins } = ctx;
     const r = asyncRouter();
+    r.get('/levels', async (req, res) => {
+        res.set('Cache-Control', req.viewer?.kind === 'user' ? 'private, no-store' : 'public, max-age=30');
+        const client = ctx.levels.readClient(req.viewer?.token);
+        let board, mine;
+        try {
+            [board, mine] = await Promise.all([client.board(), req.viewer?.username ? client.get(req.viewer.username) : null]);
+        } catch { return page(req, res, { title: 'Levels', body: html`<h1>Levels</h1><p>Experience is temporarily unavailable. Try again shortly.</p>` }, 503); }
+        const renderBoard = (label, data) => html`<section><h2>${label}</h2><ol>${data.top.map(e => html`<li value="${e.rank}"><a href="https://openvibe.network/@${encodeURIComponent(e.username)}">${e.username}</a> — Level ${e.level} · ${e.xp} experience</li>`)}</ol>${data.me ? html`<p>Your place: ${data.me.rank}</p><ol>${data.around.map(e => html`<li value="${e.rank}">${e.username} — Level ${e.level} · ${e.xp} experience</li>`)}</ol>` : ''}</section>`;
+        return page(req, res, { title: 'Levels', styles: KIT_STYLES, body: html`<h1>Levels</h1>
+            ${mine ? html`<section><h2>Your level: ${mine.level}</h2><p>${mine.xp} experience · ${mine.next_at - mine.xp} to the next level</p><progress aria-label="Experience to next level" value="${mine.into}" max="${mine.span}"></progress><h3>Recent experience</h3><ul>${mine.recent.map(e => html`<li>${e.name} · ${e.amount} · <time datetime="${e.at}">${e.at.slice(0, 10)}</time></li>`)}</ul></section>` : html`<p><a href="/me">Sign in to see your level</a></p>`}
+            ${renderBoard('All time', board.all_time)}${renderBoard('This week', board.week)}
+            <section><h2>How experience is earned</h2><p>Earned OpenCoins add the same amount of experience. Finishing a platform quest adds 25 extra experience. Experience is never bought or spent.</p><p><a href="https://openvibe.network/my#profile">Choose whether to appear on the leaderboard</a>. Your profile still shows your level.</p></section>` });
+    });
     const PUBLIC_CACHE = cache.htmlHeaders({ maxAge: 300 });
     // The pages with a Markdown twin (openvibe-shared/agent-layer): the public ones only.
     const TWIN_PATH_RE = /^\/(?:how-it-works|build-a-step-type|updates|quests|quests\/[^/]+|series\/[^/]+|apps\/quests\/[^/]+)?$/;

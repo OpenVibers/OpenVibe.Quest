@@ -74,7 +74,8 @@ function createApi(ctx) {
     });
     r.get('/quests/today', limits.reads('quest.me.read'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
-        return res.json(await ctx.daily.progress(req.principal.requester.slice(5)));
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        return res.json(await ctx.daily.today(req.principal.requester.slice(5)));
     });
     r.put('/me/daily/time-zone', limits.budget('quest.me.write'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');

@@ -6,7 +6,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
 
 (async () => {
     let now = Date.parse('2026-11-08T12:00:00Z');
-    const t = await boot({ now: () => now, aiGenerate: async () => ({
+    const t = await boot({ now: () => now, env: { QUEST_GUIDED_TODAY: 'on' }, aiGenerate: async () => ({
         steps: ['go-live', 'chat', 'wiki'], title: 'Go somewhere new', story: 'Make the network yours today.',
     }) });
     const user = t.network.addUser('daily');
@@ -57,6 +57,8 @@ const { ids, serviceAuth } = require('openvibe-contracts');
             const today = await t.get('/api/v1/quests/today', { as: user, headers: { origin: 'https://openvibe.live' } });
             assert.strictEqual(today.status, 200);
             assert.strictEqual(today.json().steps.length, 3);
+            assert.ok(!today.json().steps.some((x) => ['live.stream.started', 'chat.room.message.created', 'wiki.revision.created'].includes(x.event_type)), 'the private quest avoids recent actions already in this person\'s history');
+            assert.deepStrictEqual((await t.get('/api/v1/quests/today', { as: user })).json(), today.json(), 'the personalized selection is cached for the day');
             assert.strictEqual(today.headers.get('access-control-allow-origin'), 'https://openvibe.live');
             const publicView = await t.get('/api/v1/daily');
             assert.strictEqual(publicView.json().finished_today, 1);

@@ -1,10 +1,14 @@
 'use strict';
 
-const { NAMES } = require('openvibe-shared/glyphs');
+const glyphs = require('openvibe-shared/glyphs');
+const siteMarks = require('openvibe-shared/icons');
 const catalog = require('../quests/catalog');
-const { html } = require('./html');
+const { html, raw } = require('./html');
 
-const available = new Set(NAMES);
+// Two icon sets (see glyph() below): a name is usable when either has it.
+const GLYPHS = new Set(glyphs.NAMES);
+const MARKS = new Set(typeof siteMarks.names === 'function' ? siteMarks.names() : siteMarks.names);
+const available = new Set([...GLYPHS, ...MARKS]);
 const TOPICS = Object.freeze({
     'live.stream.started': 'live', 'network.follow.created': 'heart',
     'community.thread.created': 'chat', 'community.post.created': 'reply',
@@ -31,8 +35,12 @@ function glyph(name, size = 24, approvedSvg = null) {
         const doc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8fa4dd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${approvedSvg}</svg>`;
         return html`<img class="q-reviewed-glyph" src="data:image/svg+xml,${encodeURIComponent(doc)}" width="${size}" height="${size}" alt="">`;
     }
-    return html`<span class="ov-icon" data-icon="${safe(name)}" data-size="${size}" aria-hidden="true"></span>`;
+    // A site's own mark (live, chat, quest…) is drawn in the page by ov-icons.js; every other name is a glyph, drawn
+    // here as inline SVG. Writing a glyph's name as a site mark drew the bare "V" (most quest rows had one).
+    const n = safe(name);
+    if (!MARKS.has(n) && GLYPHS.has(n)) return html`<span class="q-glyph" data-glyph="${n}" aria-hidden="true">${raw(glyphs.svg(n, size))}</span>`;
+    return html`<span class="ov-icon" data-icon="${n}" data-size="${size}" aria-hidden="true"></span>`;
 }
 const needsDraft = (eventType, domain) => !TOPICS[eventType] && !SITES[domain];
 
-module.exports = { TOPICS, SITES, safe, topic, site, quest, badge, glyph, needsDraft };
+module.exports = { TOPICS, SITES, GLYPHS, MARKS, safe, topic, site, quest, badge, glyph, needsDraft };

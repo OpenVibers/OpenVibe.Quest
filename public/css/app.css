@@ -196,15 +196,49 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td:empty { display: none; }
 }
 
-/* One shared daily quest, before the catalog. */
-.q-daily { border: 1px solid var(--ov-border, #8886); border-radius: 18px; padding: clamp(20px, 4vw, 36px); margin-block: 20px; background: var(--ov-surface, transparent); }
-.q-daily-icon { float: right; display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid var(--ov-border, #8886); border-radius: 15px; color: var(--accent-light, #8ab8ff); background: color-mix(in srgb, var(--accent, #678cff) 18%, transparent); }
+/* One shared daily quest, before the catalog: a card. Head (the quest's icon, "Today's quest", the day in words),
+   the title, the steps as rows to press, and a foot (where you stand, how many people finished today). */
+.q-daily { margin: 12px 0 18px; padding: clamp(16px, 3.4vw, 30px); border: 1px solid var(--border, #1f2d47); border-radius: 20px;
+    background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent, #678cff) 16%, transparent), transparent 60%), var(--bg-card, #131c2e); }
+.q-daily-head { display: flex; align-items: center; gap: 12px; }
+.q-daily-icon { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; color: var(--accent-light, #8ab8ff); background: color-mix(in srgb, var(--accent, #678cff) 18%, transparent); }
 .q-reviewed-glyph { display: inline-block; flex: none; object-fit: contain; }
-.q-daily-kicker { font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.q-daily h1 { margin: .2em 0; font-size: clamp(1.5rem, 4vw, 2.4rem); }
-.q-daily-steps { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 8px; }
-.q-daily-steps li { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--ov-border, #8886); border-radius: 12px; }
-.q-daily-steps small { display: block; opacity: .7; }
-.q-daily-past { margin: 12px auto 28px; max-width: 1200px; padding: 12px 20px; }
-.q-daily-past summary { cursor: pointer; min-height: 44px; }
+.q-glyph { display: inline-grid; place-items: center; flex: none; line-height: 0; }
+.q-glyph svg { display: block; }
+.q-daily-kicker { display: grid; gap: 1px; margin: 0; min-width: 0; }
+.q-daily-kicker b { font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-light, #8ab8ff); }
+.q-daily-kicker time { color: var(--text-muted, #7386a3); font-size: .9rem; }
+.q-daily h1 { margin: 14px 0 6px; font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.15; letter-spacing: -.015em; }
+.q-daily-story { margin: 0; color: var(--text-secondary, #96a7c2); max-width: 62ch; }
+.q-daily-steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+.q-daily-steps a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--border, #1f2d47); border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-primary, #0a0f1c) 55%, transparent); color: var(--text-primary, #e6edf7); text-decoration: none; transition: border-color var(--ov-dur-2, .2s) var(--ov-ease-out, ease-out); }
+.q-daily-steps a:hover, .q-daily-steps a:focus-visible { border-color: var(--accent, #678cff); outline: none; }
+.q-daily-ic { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: var(--accent-light, #8ab8ff); background: color-mix(in srgb, var(--accent, #678cff) 14%, transparent); }
+.q-daily-ic .ov-icon { --ovi-size: 28px !important; }
+.q-daily-t { display: grid; gap: 1px; min-width: 0; }
+.q-daily-t b { font-weight: 650; line-height: 1.3; }
+.q-daily-t small { color: var(--text-muted, #7386a3); font-size: .82rem; }
+.q-daily-go { width: 8px; height: 8px; margin-right: 4px; border-right: 2px solid var(--text-muted, #7386a3); border-bottom: 2px solid var(--text-muted, #7386a3); transform: rotate(-45deg); }
+.q-daily-steps .is-done .q-daily-ic { color: var(--success, #22c55e); background: color-mix(in srgb, var(--success, #22c55e) 16%, transparent); }
+.q-daily-steps .is-done b { color: var(--text-secondary, #96a7c2); }
+.q-daily-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 16px 0 0; color: var(--text-secondary, #96a7c2); font-size: .92rem; }
+.q-daily-foot .ovk-btn { min-height: 44px; }
+.q-daily-foot b { color: var(--text-primary, #e6edf7); }
+.q-daily-dots { display: inline-flex; gap: 5px; }
+.q-daily-dots i { width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--text-muted, #7386a3) 35%, transparent); }
+.q-daily-dots i.is-on { background: var(--success, #22c55e); }
+.q-daily-n { margin-left: auto; }
+@media (max-width: 520px) { .q-daily-n { margin-left: 0; flex-basis: 100%; } .q-daily-foot .ovk-btn { flex: 1 1 auto; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .q-daily-steps a { transition: none; } }
+/* Earlier days: a counted fold, the day in words and the quest's name. */
+.q-daily-past { margin: 0 0 22px; border: 1px solid var(--border, #1f2d47); border-radius: 14px; background: var(--bg-card, #131c2e); }
+.q-daily-past summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; font-weight: 650; cursor: pointer; list-style: none; }
+.q-daily-past summary::-webkit-details-marker { display: none; }
+.q-daily-past summary::after { content: ""; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); opacity: .6; }
+.q-daily-past[open] summary::after { transform: rotate(225deg); }
+.q-daily-past-n { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text-muted, #7386a3) 18%, transparent); color: var(--text-secondary, #96a7c2); font-size: .8rem; font-weight: 700; }
+.q-daily-past ul { list-style: none; margin: 0; padding: 0 14px 10px; }
+.q-daily-past li { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid var(--border, #1f2d47); }
+.q-daily-past time { color: var(--text-muted, #7386a3); }
 .q-doc { max-width: 780px; margin-inline: auto; }

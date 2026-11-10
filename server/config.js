@@ -19,6 +19,7 @@ function load(env = process.env) {
 
     return {
         service: 'quest',
+        guidedTodayEnabled: String(env.QUEST_GUIDED_TODAY || '').toLowerCase() === 'on',
         port,
         host: env.HOST || '127.0.0.1',
         nodeEnv,

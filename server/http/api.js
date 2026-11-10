@@ -46,6 +46,16 @@ function createApi(ctx) {
 
     r.use(express.json({ limit: '64kb' }));
     r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+    const questOrigins = new Set(Object.keys(catalog.SITES).map((host) => `https://${host}`));
+    r.use((req, res, next) => {
+        const origin = req.get('Origin');
+        if (origin && questOrigins.has(origin)) {
+            res.set('Access-Control-Allow-Origin', origin).set('Access-Control-Allow-Credentials', 'true').set('Vary', 'Origin');
+            if (req.method === 'OPTIONS') res.set('Access-Control-Allow-Methods', 'GET, OPTIONS').set('Access-Control-Allow-Headers', 'Authorization, Content-Type').set('Access-Control-Max-Age', '600');
+        }
+        next();
+    });
+    r.options('/quests/today', (_req, res) => res.sendStatus(204));
     r.use(principal.middleware);
 
     r.get('/ping', limits.reads('quest.api.read'), (_req, res) => res.json({ ok: true, service: config.service }));
@@ -61,6 +71,11 @@ function createApi(ctx) {
     r.get('/me/daily', limits.reads('quest.me.read'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
         return res.json(await ctx.daily.progress(req.principal.requester.slice(5)));
+    });
+    r.get('/quests/today', limits.reads('quest.me.read'), async (req, res) => {
+        if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        return res.json(await ctx.daily.today(req.principal.requester.slice(5)));
     });
     r.put('/me/daily/time-zone', limits.budget('quest.me.write'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');

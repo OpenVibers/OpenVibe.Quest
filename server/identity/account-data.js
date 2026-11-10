@@ -32,6 +32,7 @@ const TABLES = [
     { table: 'daily_preferences', subject: 'subject', file: 'daily-preferences.json' },
     { table: 'daily_events', subject: 'subject', file: 'daily-events.json' },
     { table: 'daily_completions', subject: 'subject', file: 'daily-completions.json' },
+    { table: 'daily_personal_quests', subject: 'subject', file: 'daily-personal-quests.json' },
 ];
 
 /** The account-data handle for Quest's store (server/db.js createStore). */

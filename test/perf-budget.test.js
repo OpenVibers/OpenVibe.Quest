@@ -21,14 +21,14 @@ const BUDGETS = {
     // Raised 2026-10-22 with the rich home: figures under the hero, the most-earned badges, each card's "earned by",
     // the badges nobody holds yet, the sites Quest follows, a FAQ and the quests as ItemList + FAQPage JSON-LD.
     // Measured 54.3 KB raw / 10.6 KB brotli on a fresh database.
-    htmlRawKB: 83,   // 82.6 with the daily quest hero (2026-11-09); 81.3 with openvibe-shared 4.93.2: content labels, glyph fallback, footer counts (2026-11-01); 80.6 with 2026-11-01: the hero orbit (15 sites, inline icons) (2026-11-01); 58.6 the home a taste and a door (2026-10-29): rails of kit cards and folds instead of every quest card and the sites list; 67.5 the hero's and the numbers' icons (inline ring icons, 2026-10-28); 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
+    htmlRawKB: 83.5, // 83.2 with the daily quest as a card of three rows and its glyphs drawn inline (2026-11-10); before: 82.6 with the daily quest hero (2026-11-09); 81.3 with openvibe-shared 4.93.2: content labels, glyph fallback, footer counts (2026-11-01); 80.6 with 2026-11-01: the hero orbit (15 sites, inline icons) (2026-11-01); 58.6 the home a taste and a door (2026-10-29): rails of kit cards and folds instead of every quest card and the sites list; 67.5 the hero's and the numbers' icons (inline ring icons, 2026-10-28); 61.2 openvibe-shared 4.15 footer: the compact footer opens into the whole one, and the pulse line; measured 54.3 (the home page: hero, figures, badges, features, the quests, sites, FAQ, cta, JSON-LD)
     htmlBrotliKB: 16.8, // 16.8: measured 16.3 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     jsFiles: 5,   // 5 (theme-loader, web-runtime, navbar, footer, boost: openvibe-shared/shell)
     jsRawKB: 376.7, // 376.7: measured 368.7 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     jsBrotliKB: 89.5, // 89.5: measured 87.5 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     cssFiles: 4,   // 4 (2026-10-29: + /shared/kit.css and /shared/room.css, the kit's numbers, filters, folds, cards and rails); 2 (app.css + the cached /shared/showcase.css)
-    cssRawKB: 122.2, // 122.2: measured 117.2 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
-    cssBrotliKB: 26.6, // 26.6: measured 25.4 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
+    cssRawKB: 126.2, // 125.9 with the daily card and the phone folds (2026-11-10); before: 122.2: measured 117.2 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
+    cssBrotliKB: 27.3, // 27.1 with the daily card and the phone folds (2026-11-10); before: 26.6: measured 25.4 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     externalFiles: 0,   // 0
 };
 

@@ -583,7 +583,7 @@ streamers do not write quests: a quest sends people to do something.</li>
 <li>Deleting your OpenVibe account deletes your progress, completions and badges here, and an account export includes
 them (ADR-033).</li>
 <li>When two of your OpenVibe accounts are merged, everything here moves to the account you keep: each step keeps the
-higher count, a quest both finished counts once, and each badge keeps its first award (ADR-029).</li>
+higher count, a quest both finished counts once, and each badge keeps its first award.</li>
 </ul>
 <p><a href="/quests">The quests</a> · <a href="/updates">What shipped</a></p>`,
     }));

@@ -34,7 +34,6 @@
   "notYet": [
     "Community-made quests (streamers, communities, mods): they need moderation, which this release does not have",
     "Repeatable quests and seasonal resets: every quest completes once per person",
-    "Account merges (ADR-029): quest_progress, quest_completions and quest_badges rows are not re-keyed when a Network account is merged into another (deletion is answered, ADR-033; a merge's aliases are erased with the account)",
     "Quest chains, leaderboards and per-community quests; a streamer's getting-started steps still live on OpenVibe.Live"
   ],
   "capabilitiesRegistered": true,

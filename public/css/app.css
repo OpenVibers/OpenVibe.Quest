@@ -242,3 +242,11 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-daily-past li { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid var(--border, #1f2d47); }
 .q-daily-past time { color: var(--text-muted, #7386a3); }
 .q-doc { max-width: 780px; margin-inline: auto; }
+
+/* On a phone a folded section is one row: the section's own top and bottom room (made to hold a heading and its
+   content) left a closed fold floating in a third of a screen of nothing. */
+@media (max-width: 640px) {
+    .page .sc-sec:has(> .hm-fold-block) { margin-block: 0; padding-block: 2px; }
+    .page .sc-sec:has(> .hm-fold-block) > .hm-fold-block > summary { min-height: 56px; }
+    .page .sc-sec:has(> .hm-fold-block[open]) { padding-bottom: 18px; }
+}

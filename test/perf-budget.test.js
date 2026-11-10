@@ -27,8 +27,8 @@ const BUDGETS = {
     jsRawKB: 376.7, // 376.7: measured 368.7 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     jsBrotliKB: 89.5, // 89.5: measured 87.5 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
     cssFiles: 4,   // 4 (2026-10-29: + /shared/kit.css and /shared/room.css, the kit's numbers, filters, folds, cards and rails); 2 (app.css + the cached /shared/showcase.css)
-    cssRawKB: 126.2, // 125.9 with the daily card and the phone folds (2026-11-10); before: 122.2: measured 117.2 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
-    cssBrotliKB: 27.3, // 27.1 with the daily card and the phone folds (2026-11-10); before: 26.6: measured 25.4 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 2026-11-09
+    cssRawKB: 127.3, // 127.0 with the catalog's phone cards (2026-11-10); before: 125.9 with the daily card and the phone folds (2026-11-10); before: 122.2: measured 117.2 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0,
+    cssBrotliKB: 27.6, // 27.4 with the catalog's phone cards (2026-11-10); before: 27.1 with the daily card and the phone folds (2026-11-10); before: 26.6: measured 25.4 with openvibe-shared 4.163.0, plus room for 4.162.0–4.163.0, 20
     externalFiles: 0,   // 0
 };
 

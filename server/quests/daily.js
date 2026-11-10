@@ -77,6 +77,10 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const row = await db.maybe('SELECT * FROM daily_quests WHERE day = $1', [day]);
         return row && { date: row.day, title: row.title, story: row.story, steps: JSON.parse(row.steps_json), source: row.source };
     };
+    const readPersonal = async (subject, day) => {
+        const row = await db.maybe('SELECT * FROM daily_personal_quests WHERE subject=$1 AND day=$2', [subject, day]);
+        return row && { date: row.day, title: row.title, story: row.story, steps: JSON.parse(row.steps_json), source: row.source };
+    };
     async function latestChanges() {
         try {
             const res = await fetchImpl(`${config.networkInternalUrl}/api/v1/changelog?limit=20`, { signal: AbortSignal.timeout(4000) });
@@ -91,7 +95,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (!token) return null;
         const prompt = JSON.stringify({ day, types: types.map(({ id, site, sentence, weight }) => ({ id, site, sentence, weight })),
             yesterday: yesterday ? yesterday.map((s) => s.id) : [], changes: await latestChanges(),
-            task: 'Choose exactly three step ids across at least two sites, avoid yesterday, favor recently changed sites. Write a title and one-line story. Return JSON {steps:[ids],title,story}.' });
+            task: 'Choose exactly three supplied step ids across at least two sites. Never invent a step or name a person. Write an English title (max 80 characters), a one-line story (max 180 characters), and one short actionable line per chosen id (max 120 characters). Return JSON {steps:[ids],title,story,lines:{id:line}}.' });
         const res = await fetchImpl(`${process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700'}/api/v1/runs?wait=60000`, {
             method: 'POST', headers: { ...(await token.authHeaders()), 'Content-Type': 'application/json' },
             body: JSON.stringify({ workflow: 'ai.complete', input: { messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, max_tokens: 300 }, options: { latency: 'background' } }),
@@ -133,6 +137,39 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         }).finally(() => pending.delete(day)));
         return pending.get(day);
     }
+    async function ensurePersonal(subject) {
+        const zone = await zoneOf(subject);
+        const day = localDay(s.iso(), zone);
+        const cached = await readPersonal(subject, day);
+        if (cached) return cached;
+        const types = await allTypes();
+        const since = new Date(s.now() - 30 * 86400000).toISOString();
+        const history = await db.many('SELECT DISTINCT event_type FROM daily_events WHERE subject=$1 AND occurred_at >= $2', [subject, since]);
+        const done = new Set(history.map((x) => x.event_type));
+        const fresh = types.filter((x) => !done.has(x.event_type));
+        const candidates = fresh.length >= 3 ? fresh : types;
+        let chosen = null, title = '', story = '', source = 'rotation', lines = null;
+        try {
+            const ai = await generateAi(day, candidates, null);
+            chosen = ai && validateSelection(ai.steps, candidates, null);
+            if (chosen && typeof ai.title === 'string' && ai.title.trim() && ai.title.length <= 80
+                && typeof ai.story === 'string' && ai.story.trim() && ai.story.length <= 180
+                && ai.lines && chosen.every((step) => typeof ai.lines[step.id] === 'string' && ai.lines[step.id].trim() && ai.lines[step.id].length <= 120)) {
+                title = ai.title.trim(); story = ai.story.trim(); source = 'ai'; lines = ai.lines;
+            } else chosen = null;
+        } catch (err) { log.warn('[Daily quest] Personal AI unavailable:', err.message); }
+        if (!chosen) {
+            try { chosen = rotation(day, candidates, null); }
+            catch { chosen = rotation(day, types, null); }
+            title = 'Make your way around OpenVibe';
+            story = 'Three small things, across the network, to make today yours.';
+        }
+        if (lines) chosen = chosen.map((step) => ({ ...step, sentence: lines[step.id].trim() }));
+        await db.exec(`INSERT INTO daily_personal_quests(subject,day,title,story,steps_json,source,created_at)
+            VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(subject,day) DO NOTHING`,
+        [subject, day, title, story, JSON.stringify(chosen.map(wireType)), source, s.iso()]);
+        return readPersonal(subject, day);
+    }
     async function publicQuest(day = utcDay(s.now())) {
         const q = day === utcDay(s.now()) ? await ensure(day) : await read(day);
         if (!q) return null;
@@ -156,11 +193,11 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
             ON CONFLICT (event_id) DO NOTHING`, [event.event_id, subject, event.event_type, occurred.toISOString()]);
         return subject;
     }
-    async function progress(subject, day = null) {
+    async function progress(subject, day = null, selectedQuest = null) {
         const savedZone = await db.value('SELECT time_zone FROM daily_preferences WHERE subject = $1', [subject]);
         const zone = savedZone || 'UTC';
         day = day || localDay(s.iso(), zone);
-        const q = await ensure(day);
+        const q = selectedQuest || await ensure(day);
         if (!q) return null;
         const start = new Date(day + 'T00:00:00Z').getTime();
         const events = await db.many(`SELECT event_type,occurred_at FROM daily_events
@@ -187,6 +224,10 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const finished_today = Number(await db.value('SELECT count(*) FROM daily_completions WHERE day=$1', [day]));
         return { ...q, steps, finished_today, progress: steps.filter((x) => x.done).length, completed: !!completion,
             completed_at: completion && completion.completed_at, streak, time_zone: zone };
+    }
+    async function today(subject) {
+        const quest = await ensurePersonal(subject);
+        return progress(subject, quest.date, quest);
     }
     async function contribute(project, input) {
         const { id, event_type, site, sentence, href, weight = 1 } = input || {};
@@ -220,6 +261,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
             try {
                 await ensure();
                 await db.exec('DELETE FROM daily_events WHERE occurred_at < $1', [new Date(s.now() - 3 * 86400000).toISOString()]);
+                await db.exec('DELETE FROM daily_personal_quests WHERE day < $1', [utcDay(s.now() - 2 * 86400000)]);
             } catch (err) { log.warn('[Daily quest] generation failed:', err.message); }
             const now = s.now();
             const next = Date.parse(utcDay(now + 86400000) + 'T00:00:00Z') + 1000;
@@ -228,6 +270,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, today, ensurePersonal, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

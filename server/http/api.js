@@ -178,6 +178,15 @@ function createApi(ctx) {
     });
 
     // ── Someone's badges (public: ids, names and dates only) ──
+    // Network applies public-profile and per-field visibility before requesting this private aggregate.
+    r.get('/profiles/:subject/streak', limits.reads('quest.badge.read'), async (req, res) => {
+        if (req.principal.kind !== 'app' || req.principal.requester !== 'service:network' || req.principal.claims.env === 'sandbox' || !Array.isArray(req.principal.claims.cap) || !req.principal.claims.cap.includes('quest.badge.read')) {
+            return problem(req, res, 403, 'quest.network_only', 'Only Network may read the card aggregate.');
+        }
+        if (!contracts.ids.isSubjectId('user', req.params.subject)) return problem(req, res, 400, 'quest.invalid_subject', 'Use a user subject.');
+        res.json({ streak: await ctx.daily.streakOf(req.params.subject) });
+    });
+
     r.get('/profiles/:subject/badges', limits.reads('quest.badge.read'), async (req, res) => {
         const subject = String(req.params.subject || '');
         if (!SUBJECT_RE.test(subject)) return problem(req, res, 404, 'quest.profile.not_found', 'No such person.');

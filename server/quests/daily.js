@@ -193,6 +193,18 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
             ON CONFLICT (event_id) DO NOTHING`, [event.event_id, subject, event.event_type, occurred.toISOString()]);
         return subject;
     }
+    // Read-only: unlike progress(), a card must never ensure quests or settle rewards.
+    async function streakOf(subject, day = null) {
+        day = day || localDay(s.iso(), await zoneOf(subject));
+        const rows = await db.many('SELECT day FROM daily_completions WHERE subject=$1 AND day <= $2 ORDER BY day DESC LIMIT 366', [subject, day]);
+        const days = new Set(rows.map(r => r.day));
+        let streak = 0;
+        for (let cursor = Date.parse(day + 'T00:00:00Z') - (days.has(day) ? 0 : 86400000); streak < 365; cursor -= 86400000) {
+            if (!days.has(utcDay(cursor))) break;
+            streak++;
+        }
+        return streak;
+    }
     async function progress(subject, day = null, selectedQuest = null) {
         const savedZone = await db.value('SELECT time_zone FROM daily_preferences WHERE subject = $1', [subject]);
         const zone = savedZone || 'UTC';
@@ -215,12 +227,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
             if (row && coins.enabled) await coins.settle(row);
         }
         const completion = await db.maybe('SELECT completed_at FROM daily_completions WHERE subject=$1 AND day=$2', [subject, day]);
-        let streak = 0;
-        for (let cursor = Date.parse(day + 'T00:00:00Z') - (completion ? 0 : 86400000); streak < 365; cursor -= 86400000) {
-            const d = utcDay(cursor);
-            if (!(await db.maybe('SELECT day FROM daily_completions WHERE subject=$1 AND day=$2', [subject, d]))) break;
-            streak++;
-        }
+        const streak = await streakOf(subject, day);
         const finished_today = Number(await db.value('SELECT count(*) FROM daily_completions WHERE day=$1', [day]));
         return { ...q, steps, finished_today, progress: steps.filter((x) => x.done).length, completed: !!completion,
             completed_at: completion && completion.completed_at, streak, time_zone: zone };
@@ -270,6 +277,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, today, ensurePersonal, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

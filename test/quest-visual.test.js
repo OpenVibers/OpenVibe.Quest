@@ -24,7 +24,8 @@ const { createGlyphDraftClient, nameForBadge, nameForDaily } = require('../serve
             assert.ok(me.text.includes('/css/quest-visual.css') && me.text.includes('/js/quest-visual.js'));
             const index = await t.get('/quests', { as: person });
             assert.equal(index.status, 200);
-            assert.ok(index.text.includes('q-index-daily') && index.text.includes('TODAY\'S SHARED QUEST'));
+            assert.ok(/<section class="q-daily"[^>]*>[\s\S]*?<h2 id="daily-title" class="q-daily-title">/.test(index.text), 'the catalog shows the same daily card as the home, its title an h2');
+            assert.ok(!index.text.includes('q-index-daily'), 'one card, not two');
             assert.ok(index.text.includes('Quests by site') && index.text.includes('q-site-chip'));
             assert.ok(requests.some((x) => /^daily-\d{4}-\d{2}-\d{2}$/.test(x.name)), 'a unique daily drawing joins review');
         });

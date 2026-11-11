@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Pin the released Contracts 0.406.0, SDK 0.148.0 and Shared 4.209.0 libraries for guided quests.
 - Let the owning site's verified service report an opaque guided step by source event id, with idempotent progress; allow the DNS tool's guide preflight and exclude Meme from daily choices until its event feed is enabled.
 - Count public Meme captions without their content, add the caption maker and Video upload controls to guided daily choices, and order personal steps from easier to harder.
 - Address Chat's public composer and the DNS tool from the personal catalogue; keep Wiki edits and world publishing out of automatic choices until the person has permission or a draft.

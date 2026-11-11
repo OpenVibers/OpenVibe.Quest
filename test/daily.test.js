@@ -164,6 +164,10 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 const resolved = await g.get(path, { as: owner });
                 assert.strictEqual(resolved.status, 200);
                 assert.strictEqual(resolved.json().step.hook, 'pics.upload');
+                assert.strictEqual(resolved.json().step.done, false);
+                await g.ctx.s.db.exec('INSERT INTO daily_events(event_id,subject,event_type,occurred_at) VALUES($1,$2,$3,$4)',
+                    [ids.newId('event'), owner.subject, 'mediahub.picture.uploaded', g.ctx.s.iso()]);
+                assert.strictEqual((await g.get(path, { as: owner })).json().step.done, true);
                 assert.ok(resolved.json().next_href === null || resolved.json().next_href.includes('qstep='));
                 assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);
                 const channelPath = '/api/v1/me/channel-quest';

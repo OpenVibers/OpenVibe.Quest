@@ -537,7 +537,7 @@ const BADGE_ICONS = Object.freeze({
     'first-reply': 'reply', commenter: 'quote', 'said-hello': 'hand', 'wiki-editor': 'book-open', 'player-one': 'game',
     toolsmith: 'wrench', 'space-thread-starter': 'rocket', 'first-post': 'pencil', 'deal-spotter': 'tag', 'deal-judge': 'thumbs-up',
     'job-runner': 'terminal', 'dressed-up': 'shirt', 'robot-pilot': 'robot', 'world-builder': 'globe', premiere: 'clapper',
-    snapshot: 'camera', 'settled-in': 'home',
+    snapshot: 'camera', 'meme-captioner': 'pencil', 'settled-in': 'home',
     'live-setup-slot-holder': 'layers', 'live-setup-method-picked': 'sliders', 'live-setup-restreamer': 'share',
     'live-setup-profile-ready': 'user-check', 'live-setup-offline-screen': 'image', 'live-setup-emote-maker': 'smile',
     'live-setup-sound-board': 'volume', 'live-setup-goal-setter': 'target', 'live-setup-tip-jar': 'coin',

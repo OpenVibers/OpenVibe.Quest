@@ -201,11 +201,11 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function resolveStep(subject, id) {
         if (!/^[A-Za-z0-9_-]{16}$/.test(id || '')) return null;
-        const quest = await ensurePersonal(subject);
+        const quest = await today(subject);
         const index = quest.steps.findIndex((step) => step.guide_id === id);
         if (index < 0) return null;
         const step = quest.steps[index];
-        return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type },
+        return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type, done: step.done },
             next_href: quest.steps[index + 1]?.href || null };
     }
     async function channelQuest(subject) {

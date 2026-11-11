@@ -77,6 +77,13 @@ function createApi(ctx) {
         if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
         return res.json(await ctx.daily.today(req.principal.requester.slice(5)));
     });
+    r.get('/quests/today/steps/:id', limits.reads('quest.me.read'), async (req, res) => {
+        if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        const answer = await ctx.daily.resolveStep(req.principal.requester.slice(5), req.params.id);
+        if (!answer) return problem(req, res, 404, 'quest.step_not_found', 'No guided step with that id today.');
+        return res.json(answer);
+    });
     r.put('/me/daily/time-zone', limits.budget('quest.me.write'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
         if (req.principal.viaSession && !require('./principal').sameOrigin(req, config.baseUrl)) return problem(req, res, 403, 'request.cross_site', 'Use the same origin.');

@@ -2,6 +2,7 @@
 
 /** One shared daily quest. Events are kept without payloads so local-day progress can be recalculated safely. */
 const { serviceAuth } = require('openvibe-contracts');
+const { randomBytes } = require('node:crypto');
 const catalog = require('./catalog');
 const { personOf } = require('./apply');
 const store = require('./store');
@@ -9,19 +10,19 @@ const store = require('./store');
 const BASE_TYPES = Object.freeze([
     ['go-live', 'live.stream.started', 'openvibe.live', 'Go live for a stream', 'https://openvibe.live/broadcast', 3],
     ['follow', 'network.follow.created', 'openvibe.network', 'Follow someone new', 'https://openvibe.network/', 1],
-    ['thread', 'community.thread.created', 'openvibe.community', 'Start a community thread', 'https://openvibe.community/', 2],
+    ['thread', 'community.thread.created', 'openvibe.community', 'Start a community thread', 'https://openvibe.community/forum/general/new', 2, 'community.thread', 'Write a title and message, then press Post thread.'],
     ['reply', 'community.post.created', 'openvibe.community', 'Reply to a community thread', 'https://openvibe.community/', 1],
     ['comment', 'community.comment.created', 'openvibe.community', 'Comment on a post', 'https://openvibe.community/', 1],
     ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1],
     ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/', 3],
     ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://openvibe.tools/', 2],
     ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/', 3],
-    ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2],
+    ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2, 'pics.upload', 'Choose a picture to upload, then finish the upload form.'],
     ['vote', 'deals.vote.changed', 'openvibe.deals', 'Vote on a deal', 'https://openvibe.deals/', 1],
     ['blog', 'blog.post.published', 'openvibe.blog', 'Publish a blog post', 'https://openvibe.blog/', 3],
     ['world', 'games.world.published', 'openvibe.games', 'Publish a world', 'https://openvibe.games/', 3],
-].map(([id, event_type, site, sentence, href, weight]) => Object.freeze({
-    id, event_type, site, sentence, href, weight, count: 1, verification: 'event subject, count within the person\'s local day',
+].map(([id, event_type, site, sentence, href, weight, hook, help]) => Object.freeze({
+    id, event_type, site, sentence, href, weight, hook, help, count: 1, verification: 'event subject, count within the person\'s local day',
     status: 'approved', source: 'quest',
 })));
 const KNOWN_TOPICS = new Set(catalog.EVENT_TYPES);
@@ -62,8 +63,19 @@ function rotation(day, types, yesterday) {
 }
 function wireType(t) {
     return { id: t.id, event_type: t.event_type, site: t.site, sentence: t.sentence, href: t.href,
+        ...(t.hook ? { hook: t.hook, help: t.help } : {}),
         weight: Number(t.weight), count: 1, verification: 'event subject, count within the person\'s local day',
         status: t.status, source: t.source || t.project_id };
+}
+function guidedStep(step) {
+    const value = wireType(step);
+    if (value.hook) {
+        value.guide_id = randomBytes(12).toString('base64url');
+        const url = new URL(value.href);
+        url.searchParams.set('qstep', value.guide_id);
+        value.href = url.toString();
+    }
+    return value;
 }
 
 function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, aiGenerate, log = console }) {
@@ -167,8 +179,17 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (lines) chosen = chosen.map((step) => ({ ...step, sentence: lines[step.id].trim() }));
         await db.exec(`INSERT INTO daily_personal_quests(subject,day,title,story,steps_json,source,created_at)
             VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(subject,day) DO NOTHING`,
-        [subject, day, title, story, JSON.stringify(chosen.map(wireType)), source, s.iso()]);
+        [subject, day, title, story, JSON.stringify(chosen.map(guidedStep)), source, s.iso()]);
         return readPersonal(subject, day);
+    }
+    async function resolveStep(subject, id) {
+        if (!/^[A-Za-z0-9_-]{16}$/.test(id || '')) return null;
+        const quest = await ensurePersonal(subject);
+        const index = quest.steps.findIndex((step) => step.guide_id === id);
+        if (index < 0) return null;
+        const step = quest.steps[index];
+        return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type },
+            next_href: quest.steps[index + 1]?.href || null };
     }
     async function publicQuest(day = utcDay(s.now())) {
         const q = day === utcDay(s.now()) ? await ensure(day) : await read(day);
@@ -277,6 +298,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

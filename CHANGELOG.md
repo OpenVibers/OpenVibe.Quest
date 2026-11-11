@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Give guided picture and thread steps opaque per-person links and an authenticated step reader for the host page.
 - Add the authenticated, network-origin CORS reader `GET /api/v1/quests/today`; keep progress private to its person.
 
 What changed in OpenVibe.Quest, newest first. Each site also publishes its patch notes at /updates.

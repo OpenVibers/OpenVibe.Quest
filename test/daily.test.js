@@ -117,6 +117,28 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.deepStrictEqual(rows.map(r => [Number(r.coins), r.coins_state]), [[5, 'credited']]);
             } finally { await c.close(); }
         });
+        await check('opaque guide links resolve only for their signed-in owner', async () => {
+            const g = await boot({ now: () => Date.parse('2026-11-08T12:00:00Z'), env: { QUEST_GUIDED_TODAY: 'on' },
+                aiGenerate: async () => ({ steps: ['picture', 'thread', 'wiki'], title: 'Make something', story: 'Three places.',
+                    lines: { picture: 'Upload a picture', thread: 'Start a thread', wiki: 'Improve a page' } }) });
+            try {
+                const owner = g.network.addUser('guide-owner');
+                const stranger = g.network.addUser('guide-stranger');
+                const today = await g.get('/api/v1/quests/today', { as: owner });
+                assert.strictEqual(today.status, 200);
+                const picture = today.json().steps.find((step) => step.id === 'picture');
+                assert.match(picture.href, /^https:\/\/openvibe\.pics\/\?qstep=[A-Za-z0-9_-]{16}$/);
+                assert.strictEqual(picture.hook, 'pics.upload');
+                const id = new URL(picture.href).searchParams.get('qstep');
+                const path = `/api/v1/quests/today/steps/${id}`;
+                assert.strictEqual((await g.get(path)).status, 401);
+                assert.strictEqual((await g.get(path, { as: stranger })).status, 404);
+                const resolved = await g.get(path, { as: owner });
+                assert.strictEqual(resolved.status, 200);
+                assert.strictEqual(resolved.json().step.hook, 'pics.upload');
+                assert.ok(resolved.json().next_href.includes('qstep='));
+            } finally { await g.close(); }
+        });
     } finally { await t.close(); }
     done();
 })().catch((err) => { process.stderr.write(String(err.stack || err) + '\n'); process.exit(1); });

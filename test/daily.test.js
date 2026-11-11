@@ -119,8 +119,8 @@ const { ids, serviceAuth } = require('openvibe-contracts');
         });
         await check('opaque guide links resolve only for their signed-in owner', async () => {
             const g = await boot({ now: () => Date.parse('2026-11-08T12:00:00Z'), env: { QUEST_GUIDED_TODAY: 'on' },
-                aiGenerate: async () => ({ steps: ['picture', 'thread', 'wiki'], title: 'Make something', story: 'Three places.',
-                    lines: { picture: 'Upload a picture', thread: 'Start a thread', wiki: 'Improve a page' } }) });
+                aiGenerate: async () => ({ steps: ['picture', 'thread', 'schedule'], title: 'Make something', story: 'Three places.',
+                    lines: { picture: 'Upload a picture', thread: 'Start a thread', schedule: 'Schedule something' } }) });
             try {
                 const owner = g.network.addUser('guide-owner');
                 const stranger = g.network.addUser('guide-stranger');
@@ -137,6 +137,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(resolved.status, 200);
                 assert.strictEqual(resolved.json().step.hook, 'pics.upload');
                 assert.ok(resolved.json().next_href.includes('qstep='));
+                assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);
             } finally { await g.close(); }
         });
     } finally { await t.close(); }

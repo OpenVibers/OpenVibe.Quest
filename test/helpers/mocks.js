@@ -61,14 +61,16 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
         grants: new Map(), quotas: new Map(), usage: new Map(), audit: [], codes: new Map(), refresh: new Map(),
         catalog: null, down: false, requests: [], tokenRequests: [], exportTokens: [], exportTtl: 300,
         coins: { balances: new Map(), byKey: new Map(), credits: [], down: false },
+        testSubjects: new Set(),
     };
     let issuer = null;
     let nextUserId = 1;
 
     const problem = (json, status, code, detail) => json(status, { type: `https://openvibe.network/problems/${code}`, title: 'Error', status, code, detail, error: detail, request_id: `req_${crypto.randomBytes(6).toString('hex')}` }, { 'Content-Type': 'application/problem+json' });
 
-    function addUser(username, { role = 'user' } = {}) {
+    function addUser(username, { role = 'user', is_test = false } = {}) {
         const u = { id: nextUserId++, subject: ids.newId('user'), username, display_name: username, role };
+        if (is_test) st.testSubjects.add(u.subject);
         st.users.set(u.id, u); st.byUsername.set(username, u);
         return u;
     }
@@ -325,6 +327,13 @@ async function startNetwork({ sandboxAudiences = ['openvibe.events', 'openvibe.m
             const u = [...st.users.values()].find((x) => x.subject === url.searchParams.get('subject_id'));
             if (!u) return problem(json, 404, 'identity.subject_not_found', 'no subject for that id');
             return json(200, { subject: { type: 'user', id: u.subject }, network_user_id: u.id, username: u.username, display_name: u.display_name, banned: false });
+        }
+        if (url.pathname === '/internal/identity/test-subjects' && req.method === 'GET') {
+            const claims = serviceFrom(req);
+            if (!claims || !hasCap(claims, 'identity.subject.resolve')) return problem(json, 403, 'capability.denied', 'identity.subject.resolve is required');
+            const subjects = [...st.users.values()].filter((u) => st.testSubjects.has(u.subject))
+                .map((u) => ({ subject: { type: 'user', id: u.subject }, network_user_id: u.id, username: u.username, display_name: u.display_name, avatar_url: null, banned: false, is_test: true }));
+            return json(200, { subjects });
         }
         if (url.pathname === '/internal/coins/credit' && req.method === 'POST') {
             const claims = serviceFrom(req);

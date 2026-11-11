@@ -46,7 +46,7 @@ function createApi(ctx) {
 
     r.use(express.json({ limit: '64kb' }));
     r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-    const questOrigins = new Set(Object.keys(catalog.SITES).map((host) => `https://${host}`));
+    const questOrigins = new Set([...Object.keys(catalog.SITES).map((host) => `https://${host}`), 'https://dns.openvibe.tools']);
     r.use((req, res, next) => {
         const origin = req.get('Origin');
         if (origin && questOrigins.has(origin)) {
@@ -56,6 +56,7 @@ function createApi(ctx) {
         next();
     });
     r.options('/quests/today', (_req, res) => res.sendStatus(204));
+    r.options('/quests/today/steps/:id', (_req, res) => res.sendStatus(204));
     r.use(principal.middleware);
 
     r.get('/ping', limits.reads('quest.api.read'), (_req, res) => res.json({ ok: true, service: config.service }));

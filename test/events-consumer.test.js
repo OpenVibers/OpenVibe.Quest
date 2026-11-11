@@ -208,6 +208,11 @@ const progressOf = async (t, subject, questId) => (await rows(t, 'SELECT step, c
             assert.ok((await done()).includes('publish-a-video'));
             await deliver(t, envelope('mediahub.picture.uploaded', { picture: 'pic_01M516F1WX5NN6C0EMW2V0G8Y9', owner: { type: 'user', id: sam.subject }, uploaded_at: iso() }, { source: 'media-hub' }));
             assert.ok((await done()).includes('share-a-picture'));
+            const caption = { caption_id: 'mcp_01M516F1WX5NN6C0EMW2V0G8Y9', created_at: iso() };
+            await deliver(t, envelope('meme.caption.created', { ...caption, owner: { type: 'service', id: 'meme' } }, { source: 'meme' }));
+            assert.ok(!(await done()).includes('caption-a-meme'));
+            await deliver(t, envelope('meme.caption.created', { ...caption, owner: { type: 'user', id: sam.subject } }, { source: 'meme' }));
+            assert.ok((await done()).includes('caption-a-meme'));
         });
 
         await check('an event that names nobody creditable is ignored: no subject, a guest, a service, an unknown type', async () => {

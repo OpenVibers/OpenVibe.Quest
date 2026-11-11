@@ -44,6 +44,7 @@ const SITES = Object.freeze({
     'openvibe.bot': { name: 'OpenVibe.Bot', what: 'robots you drive from the browser' },
     'openvibe.video': { name: 'OpenVibe.Video', what: 'videos you upload or record' },
     'openvibe.pics': { name: 'OpenVibe.Pics', what: 'pictures you share' },
+    'openvibe.meme': { name: 'OpenVibe.Meme', what: 'memes and captions' },
 });
 
 /**
@@ -241,6 +242,15 @@ const QUESTS = Object.freeze([
         why: 'Put a picture on OpenVibe.Pics and get a link to share or embed anywhere, with its location and camera details removed.',
         steps: [{ event_type: 'mediahub.picture.uploaded', count: 1, label: 'Upload a picture at openvibe.pics' }],
         reward: { badge: { id: 'snapshot', name: 'Snapshot' }, coins: 5 },
+        repeatable: false,
+    },
+    {
+        id: 'caption-a-meme',
+        site: 'openvibe.meme',
+        title: 'Caption a meme',
+        why: 'Put your own words on a template and share the result.',
+        steps: [{ event_type: 'meme.caption.created', count: 1, label: 'Save a public caption' }],
+        reward: { badge: { id: 'meme-captioner', name: 'Meme Captioner' }, coins: 0 },
         repeatable: false,
     },
     {
@@ -470,6 +480,7 @@ const EVENTS = Object.freeze([
     { event_type: 'games.world.published', site: 'openvibe.games', what: 'A player published one of their creator worlds for the first time; the payload names the owner.' },
     { event_type: 'mediahub.video.published', site: 'openvibe.video', what: 'A video a person uploaded or recorded is public and ready for the first time; the payload names the owner.' },
     { event_type: 'mediahub.picture.uploaded', site: 'openvibe.pics', what: 'A signed-in person uploaded a picture; the payload names the owner (and carries no link).' },
+    { event_type: 'meme.caption.created', site: 'openvibe.meme', what: 'A signed-in person saved a public caption; the payload names the owner and caption id, without its content.' },
     { event_type: 'today.event.scheduled', site: 'openvibe.today', what: 'A person scheduled a stream or event; the envelope actor names the owner.' },
 ]);
 

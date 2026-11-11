@@ -24,8 +24,9 @@ const BASE_TYPES = Object.freeze([
     ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1],
     ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/', 3],
     ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://openvibe.tools/', 2],
-    ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/', 3],
+    ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/upload', 3, 'video.upload', 'Choose a video, upload it, then make it public.'],
     ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2, 'pics.upload', 'Choose a picture to upload, then finish the upload form.'],
+    ['meme', 'meme.caption.created', 'openvibe.meme', 'Caption a meme', 'https://openvibe.meme/make', 2, 'meme.caption', 'Choose a template, add a caption, then save it as public.'],
     ['schedule', 'today.event.scheduled', 'openvibe.today', 'Schedule a stream or event', 'https://openvibe.today/schedule', 2, 'today.schedule', 'Choose a time and press Schedule it.'],
     ['vote', 'deals.vote.changed', 'openvibe.deals', 'Vote on a deal', 'https://openvibe.deals/', 1],
     ['blog', 'blog.post.published', 'openvibe.blog', 'Publish a blog post', 'https://openvibe.blog/', 3],
@@ -192,6 +193,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
             story = 'Three small things, across the network, to make today yours.';
         }
         if (lines) chosen = chosen.map((step) => ({ ...step, sentence: lines[step.id].trim() }));
+        chosen.sort((a, b) => a.weight - b.weight || a.id.localeCompare(b.id));
         await db.exec(`INSERT INTO daily_personal_quests(subject,day,title,story,steps_json,source,created_at)
             VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(subject,day) DO NOTHING`,
         [subject, day, title, story, JSON.stringify(chosen.map(guidedStep)), source, s.iso()]);

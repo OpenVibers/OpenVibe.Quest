@@ -43,7 +43,9 @@ const completionsFor = (db, subject) => db.many(
     'SELECT * FROM quest_completions WHERE subject = $1 ORDER BY completed_at DESC, id DESC', [subject]);
 
 /** Every completion for a quest — a completion count for the pages, never a list of people. */
-const completionCount = async (db, questId) => Number(await db.value('SELECT count(*) FROM quest_completions WHERE quest_id = $1', [questId]));
+const completionCount = async (db, questId) => Number(await db.value(
+    `SELECT count(*) FROM quest_completions c
+      WHERE c.quest_id = $1 AND NOT EXISTS (SELECT 1 FROM test_subject t WHERE t.subject = c.subject)`, [questId]));
 
 /**
  * Record a completion. Returns the row when it was inserted now, or null when this person already completed the
@@ -126,7 +128,8 @@ async function totals(db, since) {
         `SELECT count(*)::int AS completions, count(DISTINCT subject)::int AS people,
                 COALESCE(sum(coins) FILTER (WHERE coins_state = 'credited'), 0)::int AS coins,
                 count(*) FILTER (WHERE completed_at >= $1::text)::int AS recent
-           FROM quest_completions`,
+           FROM quest_completions c
+          WHERE NOT EXISTS (SELECT 1 FROM test_subject t WHERE t.subject = c.subject)`,
         [since]);
     return {
         completions: Number(row && row.completions) || 0,
@@ -137,7 +140,9 @@ async function totals(db, since) {
 }
 
 /** Completions per quest (each is that quest's badge, awarded once): [{ quest_id, n }], counts and never people. */
-const completionsByQuest = (db) => db.many('SELECT quest_id, count(*)::int AS n FROM quest_completions GROUP BY quest_id');
+const completionsByQuest = (db) => db.many(`SELECT c.quest_id, count(*)::int AS n FROM quest_completions c
+      WHERE NOT EXISTS (SELECT 1 FROM test_subject t WHERE t.subject = c.subject)
+      GROUP BY c.quest_id`);
 
 /** How many people have a badge — the count a quest page can show without naming anyone. */
 const badgeHolders = async (db, badgeId) => Number(await db.value('SELECT count(*) FROM quest_badges WHERE badge_id = $1', [badgeId]));

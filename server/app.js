@@ -30,6 +30,7 @@ const { createPrincipal } = require('./http/principal');
 const { createApi } = require('./http/api');
 const { createPageRoutes } = require('./http/pages');
 const { createCoins } = require('./quests/coins');
+const { createTestSubjects } = require('./identity/test-subjects');
 const { createItems } = require('./quests/items');
 const { createDaily } = require('./quests/daily');
 const { createGlyphDraftClient } = require('./quests/glyph-drafts');
@@ -60,6 +61,7 @@ async function createApp(opts = {}) {
     const sso = createSso({ config, keys, fetchImpl, now: s.now, log });
     const principal = createPrincipal({ config, keys });
     const coins = createCoins({ config, s, fetchImpl, log });
+    const testSubjects = createTestSubjects({ config, s, fetchImpl, log, now: s.now });
     const levels = require('./quests/levels').createLevels({ config, s, fetchImpl });
     const items = createItems({ config, s, fetchImpl, log });
     // Account export and deletion (ADR-033, ./identity/account-data.js): the three tables that hold a person's rows.
@@ -78,7 +80,7 @@ async function createApp(opts = {}) {
     const eventsConsumer = createEventsConsumer({ db: s.db, s, secrets: config.events.secrets, coins, items, accountData, accountSend, appQuests, daily, now: s.now, log });
     // The quests in OpenVibe.Search (./search-index.js), swept on its own timer once server/index.js starts it.
     const searchIndex = opts.searchIndex || createSearchIndex({ config, s, log });
-    const ctx = { config, s, keys, sso, principal, levels, coins, items, daily, glyphs, eventsConsumer, accountData, accountSend, searchIndex, appQuests, log };
+    const ctx = { config, s, keys, sso, principal, levels, coins, testSubjects, items, daily, glyphs, eventsConsumer, accountData, accountSend, searchIndex, appQuests, log };
 
     const app = express();
     // GET /openapi.json (SEO-3): this service's public API as OpenAPI 3.1, generated from the contracts

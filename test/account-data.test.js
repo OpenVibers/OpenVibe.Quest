@@ -65,7 +65,7 @@ const rowsFor = async (t, table, subject) => Number(await t.ctx.s.db.value(`SELE
         try {
             const missing = await uncovered(d.db, {
                 tables: TABLES,
-                               exempt: {"account_data_events":"the ledger of requests itself: which export and deletion quest applied","quest_index_revisions":"owner is the search-index document's owner (type/id), not a person; the row holds a revision and hash"},
+                               exempt: {"account_data_events":"the ledger of requests itself: which export and deletion quest applied","quest_index_revisions":"owner is the search-index document's owner (type/id), not a person; the row holds a revision and hash","test_subject":"the identity authority's test-account subject list, a filter cache: not a person's own data, never exported"},
             });
             assert.deepStrictEqual(missing, [], `a table with a person column is neither covered nor exempted: ${missing.join(', ')}`);
         } finally { await d.close(); }

@@ -24,6 +24,9 @@ function createLifecycle({ server, ctx, exit, signals, timers = [], extra = [] }
 async function start() {
     const { app, ctx } = await createApp();
     const { config } = ctx;
+    // Test accounts (Network users.is_test): the first list is awaited before the listener opens, so the first public
+    // page already counts without probes; a failure keeps the last good list and the hourly timer still runs.
+    await ctx.testSubjects.refresh().catch((err) => console.warn('[Test accounts] refresh failed:', err.message));
 
     // Socket activation (2026-10-31): systemd's .socket unit holds the listener across restarts, so a deploy
     // queues requests in the kernel instead of answering 502. Without the socket unit, the usual listen.
@@ -53,6 +56,8 @@ async function start() {
     ctx.levels.retryPending().catch(() => {});
     const coinsTimer = ctx.coins.start();
     if (coinsTimer) timers.push(coinsTimer);
+    const testSubjectsTimer = ctx.testSubjects.start({ refreshNow: false });
+    if (testSubjectsTimer) timers.push(testSubjectsTimer);
     // Item rewards owed (a failed grant, or a completion from before items) are granted by the same kind of timer.
     const itemsTimer = ctx.items.start();
     if (itemsTimer) timers.push(itemsTimer);
@@ -60,7 +65,7 @@ async function start() {
     // App quests: each project with an active production quest gets its app.<project_key>.* subscription.
     ctx.appQuests.setSubscriber(subscriptions ? subscriptions.subscribe : null);
     ctx.appQuests.load().catch((err) => console.warn('[Quest] app quests not loaded:', err.message));
-    const extra = [stopDaily, () => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.items.stop()];
+    const extra = [stopDaily, () => { if (subscriptions) subscriptions.stop(); }, () => ctx.coins.stop(), () => ctx.testSubjects.stop(), () => ctx.items.stop()];
     createLifecycle({ server, ctx, timers, extra });
     return { server, ctx };
 }

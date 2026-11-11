@@ -11,6 +11,17 @@ const { ids, serviceAuth } = require('openvibe-contracts');
     }) });
     const user = t.network.addUser('daily');
     try {
+        await check('catalogue carries the Live setup controls and at least thirty kinds', async () => {
+            const kinds = await t.ctx.daily.allTypes();
+            assert.ok(kinds.length >= 30);
+            const setup = kinds.filter((step) => step.id.startsWith('setup-'));
+            assert.strictEqual(setup.length, 17);
+            for (const step of setup) {
+                assert.strictEqual(step.hook, `live.setup.${step.match_task}`);
+                assert.strictEqual(new URL(step.href).hostname, 'openvibe.live');
+                assert.ok(step.help);
+            }
+        });
         await check('today reader is private and permits network-site bearer requests', async () => {
             assert.strictEqual((await t.get('/api/v1/quests/today')).status, 401);
             const preflight = await t.get('/api/v1/quests/today', { method: 'OPTIONS', headers: { origin: 'https://openvibe.pics', 'access-control-request-method': 'GET' } });
@@ -24,6 +35,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
             assert.strictEqual(validateSelection(['thread', 'reply', 'comment'], BASE_TYPES, null), null);
             const today = await t.ctx.daily.ensure();
             assert.deepStrictEqual(today.steps.map((x) => x.id), ['go-live', 'chat', 'wiki']);
+            assert.ok(today.steps.every((step) => !step.match_task), 'the public quest does not assign streamer-only setup tasks to everyone');
             assert.strictEqual(today.source, 'ai');
             const same = await t.ctx.daily.ensure();
             assert.deepStrictEqual(same, today);
@@ -160,6 +172,16 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(publicQuest.status, 200);
                 assert.strictEqual(publicQuest.json().title, request.title);
             } finally { await g.close(); }
+        });
+        await check('one setup task event cannot finish a different task', async () => {
+            const task = BASE_TYPES.find((step) => step.id === 'setup-slot');
+            const chosen = { date: '2026-11-08', title: 'Set up', story: '', source: 'rotation', steps: [task] };
+            const base = { event_type: 'live.setup.task_completed', timestamp: '2026-11-08T18:00:00Z',
+                payload: { user: { type: 'user', id: user.subject } } };
+            await t.ctx.daily.recordEvent(t.ctx.s.db, { ...base, event_id: 'evt_setup_method', payload: { ...base.payload, task: 'method' } });
+            assert.strictEqual((await t.ctx.daily.progress(user.subject, chosen.date, chosen)).steps[0].done, false);
+            await t.ctx.daily.recordEvent(t.ctx.s.db, { ...base, event_id: 'evt_setup_slot', payload: { ...base.payload, task: 'slot' } });
+            assert.strictEqual((await t.ctx.daily.progress(user.subject, chosen.date, chosen)).steps[0].done, true);
         });
     } finally { await t.close(); }
     done();

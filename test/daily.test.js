@@ -173,8 +173,18 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(resolved.status, 200);
                 assert.strictEqual(resolved.json().step.hook, 'pics.upload');
                 assert.strictEqual(resolved.json().step.done, false);
-                await g.ctx.s.db.exec('INSERT INTO daily_events(event_id,subject,event_type,occurred_at) VALUES($1,$2,$3,$4)',
-                    [ids.newId('event'), owner.subject, 'mediahub.picture.uploaded', g.ctx.s.iso()]);
+                const siteToken = (service) => {
+                    const at = Math.floor(Date.now() / 1000);
+                    return serviceAuth.signServiceToken({ iss: g.network.url, sub: `svc:${service}`, actor_type: 'service',
+                        aud: ['openvibe.quest'], cap: [], ns: [], env: 'production', iat: at, exp: at + 300,
+                        jti: `tok_${service}_${at}` }, g.network.privatePem);
+                };
+                const report = { subject: owner.subject, event_id: ids.newId('event') };
+                assert.strictEqual((await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('chat'), json: report })).status, 403);
+                const reported = await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('media-hub'), json: report });
+                assert.strictEqual(reported.status, 200, reported.text);
+                assert.strictEqual(reported.json().step.done, true);
+                assert.strictEqual((await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('media-hub'), json: report })).status, 200, 'source event replay is idempotent');
                 assert.strictEqual((await g.get(path, { as: owner })).json().step.done, true);
                 assert.ok(resolved.json().next_href === null || resolved.json().next_href.includes('qstep='));
                 assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);

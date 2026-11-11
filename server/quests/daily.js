@@ -35,6 +35,13 @@ const BASE_TYPES = Object.freeze([
     id, event_type, site, sentence, href, weight, hook, help, daily_eligible, count: 1, verification: 'event subject, count within the person\'s local day',
     status: 'approved', source: 'quest',
 })).concat(SETUP_TYPES));
+const STEP_SERVICE = Object.freeze({
+    'openvibe.live': 'service:live', 'openvibe.community': 'service:community',
+    'openvibe.chat': 'service:chat', 'openvibe.tools': 'service:tools',
+    'openvibe.pics': 'service:media-hub', 'openvibe.video': 'service:media-hub',
+    'openvibe.meme': 'service:meme', 'openvibe.today': 'service:today',
+    'openvibe.games': 'service:games', 'openvibe.wiki': 'service:wiki',
+});
 const KNOWN_TOPICS = new Set(catalog.EVENT_TYPES);
 for (const t of BASE_TYPES) if (!KNOWN_TOPICS.has(t.event_type)) throw new Error(`Unknown daily event topic: ${t.event_type}`);
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -210,6 +217,15 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type, done: step.done },
             next_href: quest.steps[index + 1]?.href || null };
     }
+    async function reportStep(subject, id, eventId, service) {
+        if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(subject || '') || !/^[A-Za-z0-9_:-]{8,96}$/.test(eventId || '')) return null;
+        const quest = await today(subject);
+        const step = quest.steps.find((item) => item.guide_id === id);
+        if (!step || STEP_SERVICE[step.site] !== service || !eventAvailable(step) || step.daily_eligible === false) return null;
+        await db.exec(`INSERT INTO daily_events(event_id,subject,event_type,occurred_at,event_detail) VALUES($1,$2,$3,$4,$5)
+            ON CONFLICT(event_id) DO NOTHING`, [eventId, subject, step.event_type, s.iso(), step.match_task || null]);
+        return resolveStep(subject, id);
+    }
     async function channelQuest(subject) {
         const row = await db.maybe('SELECT title,steps_json,updated_at FROM channel_daily_quests WHERE subject=$1', [subject]);
         return row && { channel_subject: subject, title: row.title, steps: JSON.parse(row.steps_json), updated_at: row.updated_at };
@@ -348,6 +364,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, channelQuest, putChannelQuest, aiPreference, setAiPreference, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, reportStep, channelQuest, putChannelQuest, aiPreference, setAiPreference, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

@@ -97,6 +97,14 @@ function createApi(ctx) {
         if (!answer) return problem(req, res, 404, 'quest.step_not_found', 'No guided step with that id today.');
         return res.json(answer);
     });
+    r.post('/quests/today/steps/:id/done', limits.budget('quest.me.write'), async (req, res) => {
+        if (req.principal.kind !== 'app' || !req.principal.requester.startsWith('service:'))
+            return problem(req, res, 403, 'quest.site_required', 'Only the service that owns this step can report it.');
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        const answer = await ctx.daily.reportStep(req.body?.subject, req.params.id, req.body?.event_id, req.principal.requester);
+        if (!answer) return problem(req, res, 403, 'quest.step_not_owned', 'This service cannot report that step or the report is invalid.');
+        return res.json(answer);
+    });
     r.put('/me/channel-quest', limits.budget('quest.me.write'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
         if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');

@@ -120,6 +120,9 @@ function createEventsConsumer({ db, s, secrets = [], coins = null, items = null,
 function startSubscriptions({ config, port, secret, eventsUrl = config.events.url, fetchImpl = globalThis.fetch, log = console }) {
     if (!eventsUrl || !secret || !config.oauth.clientSecret || process.env.QUEST_EVENTS_SUBSCRIBE === '0') return null;
     const base = String(eventsUrl).replace(/\/+$/, '');
+    // The Meme topic is declared in Contracts #444. Subscribe after Events has pinned that release;
+    // an unknown topic would stop the entire subscription pass before later topics are registered.
+    const topics = TOPICS.filter((topic) => topic !== 'meme.caption.created' || config.events.memeEnabled);
     const endpoint = config.events.endpoint || `http://127.0.0.1:${port}/internal/events`;
     const tokens = serviceAuth.createTokenClient({ tokenUrl: `${config.networkInternalUrl}/oauth/token`, clientId: config.oauth.clientId, clientSecret: config.oauth.clientSecret, audience: 'openvibe.events', scope: 'events.subscription.manage', fetchImpl });
     const call = async (method, path, body) => {
@@ -131,7 +134,7 @@ function startSubscriptions({ config, port, secret, eventsUrl = config.events.ur
         const listed = await call('GET', '/api/v1/subscriptions');
         if (!listed.ok) throw new Error(`listing subscriptions: ${listed.status}`);
         const mine = (listed.body.subscriptions || []).filter((x) => x.endpoint === endpoint);
-        for (const topic of TOPICS) {
+        for (const topic of topics) {
             if (mine.some((x) => x.topic_pattern === topic)) continue;
             const r = await call('POST', '/api/v1/subscriptions', { topic_pattern: topic, endpoint, secret });
             if (!r.ok && r.status !== 409) throw new Error(`subscribing to ${topic}: ${r.status} ${r.body.code || ''}`);
@@ -154,7 +157,7 @@ function startSubscriptions({ config, port, secret, eventsUrl = config.events.ur
         if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (${topic} → ${endpoint})`);
     };
     // Graceful stop: no further attempts (they run again at the next start).
-    return { topics: TOPICS, endpoint, subscribe, stop() { stopped = true; if (timer) clearTimeout(timer); timer = null; } };
+    return { topics, endpoint, subscribe, stop() { stopped = true; if (timer) clearTimeout(timer); timer = null; } };
 }
 
 module.exports = { createEventsConsumer, startSubscriptions, CONSUMER, TOPICS };

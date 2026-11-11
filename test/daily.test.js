@@ -14,6 +14,15 @@ const { ids, serviceAuth } = require('openvibe-contracts');
         await check('catalogue carries the Live setup controls and at least thirty kinds', async () => {
             const kinds = await t.ctx.daily.allTypes();
             assert.ok(kinds.length >= 30);
+            for (const [id, hook, site] of [['meme', 'meme.caption', 'openvibe.meme'], ['video', 'video.upload', 'openvibe.video'],
+                ['chat', 'chat.message', 'openvibe.chat'], ['tool', 'tools.job', 'dns.openvibe.tools'],
+                ['world', 'games.world.publish', 'openvibe.games'], ['wiki', 'wiki.revision', 'openvibe.wiki']]) {
+                const step = kinds.find((item) => item.id === id);
+                assert.strictEqual(step.hook, hook);
+                assert.strictEqual(new URL(step.href).hostname, site);
+            }
+            assert.strictEqual(kinds.find((step) => step.id === 'world').daily_eligible, false);
+            assert.strictEqual(kinds.find((step) => step.id === 'wiki').daily_eligible, false);
             const setup = kinds.filter((step) => step.id.startsWith('setup-'));
             assert.strictEqual(setup.length, 17);
             for (const step of setup) {
@@ -27,6 +36,9 @@ const { ids, serviceAuth } = require('openvibe-contracts');
             const preflight = await t.get('/api/v1/quests/today', { method: 'OPTIONS', headers: { origin: 'https://openvibe.pics', 'access-control-request-method': 'GET' } });
             assert.strictEqual(preflight.status, 204);
             assert.strictEqual(preflight.headers.get('access-control-allow-origin'), 'https://openvibe.pics');
+            const guidePreflight = await t.get('/api/v1/quests/today/steps/abc123def456', { method: 'OPTIONS', headers: { origin: 'https://dns.openvibe.tools', 'access-control-request-method': 'GET', 'access-control-request-headers': 'authorization' } });
+            assert.strictEqual(guidePreflight.status, 204);
+            assert.strictEqual(guidePreflight.headers.get('access-control-allow-origin'), 'https://dns.openvibe.tools');
             const denied = await t.get('/api/v1/quests/today', { method: 'OPTIONS', headers: { origin: 'https://example.com' } });
             assert.strictEqual(denied.headers.get('access-control-allow-origin'), null);
         });
@@ -146,6 +158,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(today.status, 200);
                 assert.strictEqual(today.json().source, 'ai');
                 assert.ok(aiCalls.some((call) => call.language === 'es'));
+                assert.ok(aiCalls.every((call) => !call.types.some((step) => step.id === 'meme')), 'disabled Meme events cannot become a daily step');
                 const beforeUnsignedChoice = aiCalls.length;
                 assert.strictEqual((await g.get('/api/v1/quests/today', { as: stranger })).json().source, 'rotation');
                 assert.strictEqual(aiCalls.length, beforeUnsignedChoice, 'no person data reaches AI before that person opts in');
@@ -159,6 +172,20 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 const resolved = await g.get(path, { as: owner });
                 assert.strictEqual(resolved.status, 200);
                 assert.strictEqual(resolved.json().step.hook, 'pics.upload');
+                assert.strictEqual(resolved.json().step.done, false);
+                const siteToken = (service) => {
+                    const at = Math.floor(Date.now() / 1000);
+                    return serviceAuth.signServiceToken({ iss: g.network.url, sub: `svc:${service}`, actor_type: 'service',
+                        aud: ['openvibe.quest'], cap: [], ns: [], env: 'production', iat: at, exp: at + 300,
+                        jti: `tok_${service}_${at}` }, g.network.privatePem);
+                };
+                const report = { subject: owner.subject, event_id: ids.newId('event') };
+                assert.strictEqual((await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('chat'), json: report })).status, 403);
+                const reported = await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('media-hub'), json: report });
+                assert.strictEqual(reported.status, 200, reported.text);
+                assert.strictEqual(reported.json().step.done, true);
+                assert.strictEqual((await g.get(`${path}/done`, { method: 'POST', bearer: siteToken('media-hub'), json: report })).status, 200, 'source event replay is idempotent');
+                assert.strictEqual((await g.get(path, { as: owner })).json().step.done, true);
                 assert.ok(resolved.json().next_href === null || resolved.json().next_href.includes('qstep='));
                 assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);
                 const channelPath = '/api/v1/me/channel-quest';

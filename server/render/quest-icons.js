@@ -15,13 +15,14 @@ const TOPICS = Object.freeze({
     'community.comment.created': 'quote', 'chat.room.message.created': 'chat',
     'wiki.revision.created': 'book-open', 'tools.job.created': 'wrench',
     'mediahub.video.published': 'clapper', 'mediahub.picture.uploaded': 'camera',
+    'meme.caption.created': 'pencil',
     'deals.vote.changed': 'thumbs-up', 'blog.post.published': 'pencil',
     'games.world.published': 'globe',
 });
 const SITES = Object.freeze({
     'openvibe.live': 'live', 'openvibe.network': 'globe', 'openvibe.community': 'chat',
     'openvibe.chat': 'chat', 'openvibe.wiki': 'book-open', 'openvibe.tools': 'wrench',
-    'openvibe.video': 'clapper', 'openvibe.pics': 'camera', 'openvibe.deals': 'tag',
+    'openvibe.video': 'clapper', 'openvibe.pics': 'camera', 'openvibe.meme': 'pencil', 'openvibe.deals': 'tag',
     'openvibe.blog': 'pencil', 'openvibe.games': 'game',
 });
 

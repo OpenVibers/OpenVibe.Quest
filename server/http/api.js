@@ -46,7 +46,7 @@ function createApi(ctx) {
 
     r.use(express.json({ limit: '64kb' }));
     r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-    const questOrigins = new Set(Object.keys(catalog.SITES).map((host) => `https://${host}`));
+    const questOrigins = new Set([...Object.keys(catalog.SITES).map((host) => `https://${host}`), 'https://dns.openvibe.tools']);
     r.use((req, res, next) => {
         const origin = req.get('Origin');
         if (origin && questOrigins.has(origin)) {
@@ -56,6 +56,7 @@ function createApi(ctx) {
         next();
     });
     r.options('/quests/today', (_req, res) => res.sendStatus(204));
+    r.options('/quests/today/steps/:id', (_req, res) => res.sendStatus(204));
     r.use(principal.middleware);
 
     r.get('/ping', limits.reads('quest.api.read'), (_req, res) => res.json({ ok: true, service: config.service }));
@@ -94,6 +95,14 @@ function createApi(ctx) {
         if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
         const answer = await ctx.daily.resolveStep(req.principal.requester.slice(5), req.params.id);
         if (!answer) return problem(req, res, 404, 'quest.step_not_found', 'No guided step with that id today.');
+        return res.json(answer);
+    });
+    r.post('/quests/today/steps/:id/done', limits.budget('quest.me.write'), async (req, res) => {
+        if (req.principal.kind !== 'app' || !req.principal.requester.startsWith('service:'))
+            return problem(req, res, 403, 'quest.site_required', 'Only the service that owns this step can report it.');
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        const answer = await ctx.daily.reportStep(req.body?.subject, req.params.id, req.body?.event_id, req.principal.requester);
+        if (!answer) return problem(req, res, 403, 'quest.step_not_owned', 'This service cannot report that step or the report is invalid.');
         return res.json(answer);
     });
     r.put('/me/channel-quest', limits.budget('quest.me.write'), async (req, res) => {

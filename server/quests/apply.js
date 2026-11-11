@@ -68,6 +68,7 @@ function personOf(event) {
         case 'games.world.published':     // payload.owner (identity.subject-ref@1, contracts 0.194.0)
         case 'mediahub.video.published':  // payload.owner (contracts 0.196.0)
         case 'mediahub.picture.uploaded': // payload.owner (contracts 0.196.0)
+        case 'meme.caption.created':       // payload.owner (no caption text)
             return refUser(p.owner);
         default:
             // An app's own event (app quests, server/quests/app-quests.js): the actor, when the app published it

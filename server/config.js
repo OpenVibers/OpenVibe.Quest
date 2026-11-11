@@ -63,6 +63,7 @@ function load(env = process.env) {
             secrets: String(env.QUEST_EVENTS_SECRET || '').split(',').map((x) => x.trim()).filter(Boolean),
             url: trim(env.QUEST_EVENTS_URL || env.EVENTS_URL || ''),
             endpoint: env.QUEST_EVENTS_ENDPOINT || '',
+            memeEnabled: env.QUEST_MEME_EVENTS_ENABLED === 'on',
         },
 
         // OpenCoins (server/quests/coins.js). Rewards are badges and OpenCoins — loyalty points, never money, and

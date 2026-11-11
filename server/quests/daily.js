@@ -21,18 +21,18 @@ const BASE_TYPES = Object.freeze([
     ['thread', 'community.thread.created', 'openvibe.community', 'Start a community thread', 'https://openvibe.community/forum/general/new', 2, 'community.thread', 'Write a title and message, then press Post thread.'],
     ['reply', 'community.post.created', 'openvibe.community', 'Reply to a community thread', 'https://openvibe.community/', 1],
     ['comment', 'community.comment.created', 'openvibe.community', 'Comment on a post', 'https://openvibe.community/', 1],
-    ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1],
-    ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/', 3],
-    ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://openvibe.tools/', 2],
+    ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1, 'chat.message', 'Write a message to everyone, then press Send.'],
+    ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/w/board-games/chess/edit', 3, 'wiki.revision', 'Edit a page where you are an editor, then press Save revision.', false],
+    ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://dns.openvibe.tools/', 2, 'tools.job', 'Enter a domain and press Lookup to run the DNS tool.'],
     ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/upload', 3, 'video.upload', 'Choose a video, upload it, then make it public.'],
     ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2, 'pics.upload', 'Choose a picture to upload, then finish the upload form.'],
     ['meme', 'meme.caption.created', 'openvibe.meme', 'Caption a meme', 'https://openvibe.meme/make', 2, 'meme.caption', 'Choose a template, add a caption, then save it as public.'],
     ['schedule', 'today.event.scheduled', 'openvibe.today', 'Schedule a stream or event', 'https://openvibe.today/schedule', 2, 'today.schedule', 'Choose a time and press Schedule it.'],
     ['vote', 'deals.vote.changed', 'openvibe.deals', 'Vote on a deal', 'https://openvibe.deals/', 1],
     ['blog', 'blog.post.published', 'openvibe.blog', 'Publish a blog post', 'https://openvibe.blog/', 3],
-    ['world', 'games.world.published', 'openvibe.games', 'Publish a world', 'https://openvibe.games/', 3],
-].map(([id, event_type, site, sentence, href, weight, hook, help]) => Object.freeze({
-    id, event_type, site, sentence, href, weight, hook, help, count: 1, verification: 'event subject, count within the person\'s local day',
+    ['world', 'games.world.published', 'openvibe.games', 'Publish a world', 'https://openvibe.games/worlds', 3, 'games.world.publish', 'Open your draft world and press Publish.', false],
+].map(([id, event_type, site, sentence, href, weight, hook, help, daily_eligible]) => Object.freeze({
+    id, event_type, site, sentence, href, weight, hook, help, daily_eligible, count: 1, verification: 'event subject, count within the person\'s local day',
     status: 'approved', source: 'quest',
 })).concat(SETUP_TYPES));
 const KNOWN_TOPICS = new Set(catalog.EVENT_TYPES);
@@ -74,7 +74,8 @@ function rotation(day, types, yesterday) {
 function wireType(t) {
     return { id: t.id, event_type: t.event_type, site: t.site, sentence: t.sentence, href: t.href,
         ...(t.hook ? { hook: t.hook, help: t.help } : {}),
-        ...(t.match_task ? { match_task: t.match_task, daily_eligible: t.daily_eligible } : {}),
+        ...(t.match_task ? { match_task: t.match_task } : {}),
+        ...(t.daily_eligible === false ? { daily_eligible: false } : {}),
         weight: Number(t.weight), count: 1, verification: 'event subject, count within the person\'s local day',
         status: t.status, source: t.source || t.project_id };
 }
@@ -214,7 +215,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function putChannelQuest(subject, input) {
         const title = typeof input?.title === 'string' ? input.title.trim() : '';
-        const types = (await allTypes()).filter((step) => step.hook && step.help && !step.match_task);
+        const types = (await allTypes()).filter((step) => step.hook && step.help && !step.match_task && step.daily_eligible !== false);
         const steps = validateSelection(input?.steps, types, null);
         if (!title || title.length > 80 || !steps) return null;
         await db.exec(`INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)

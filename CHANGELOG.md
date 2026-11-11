@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Count public Meme captions without their content, add the caption maker and Video upload controls to guided daily choices, and order personal steps from easier to harder.
+- Address Chat's public composer and the DNS tool from the personal catalogue; keep Wiki edits and world publishing out of automatic choices until the person has permission or a draft.
 - Catalogue Live's seventeen individually guided setup tasks, and count only the matching task event for each step.
 - Keep personalized AI wording off until the person records an explicit choice and language; choose only guided step kinds for that person.
 - Give guided picture, thread and calendar steps opaque per-person links and an authenticated step reader for the host page.

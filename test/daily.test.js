@@ -14,11 +14,15 @@ const { ids, serviceAuth } = require('openvibe-contracts');
         await check('catalogue carries the Live setup controls and at least thirty kinds', async () => {
             const kinds = await t.ctx.daily.allTypes();
             assert.ok(kinds.length >= 30);
-            for (const [id, hook, site] of [['meme', 'meme.caption', 'openvibe.meme'], ['video', 'video.upload', 'openvibe.video']]) {
+            for (const [id, hook, site] of [['meme', 'meme.caption', 'openvibe.meme'], ['video', 'video.upload', 'openvibe.video'],
+                ['chat', 'chat.message', 'openvibe.chat'], ['tool', 'tools.job', 'dns.openvibe.tools'],
+                ['world', 'games.world.publish', 'openvibe.games'], ['wiki', 'wiki.revision', 'openvibe.wiki']]) {
                 const step = kinds.find((item) => item.id === id);
                 assert.strictEqual(step.hook, hook);
                 assert.strictEqual(new URL(step.href).hostname, site);
             }
+            assert.strictEqual(kinds.find((step) => step.id === 'world').daily_eligible, false);
+            assert.strictEqual(kinds.find((step) => step.id === 'wiki').daily_eligible, false);
             const setup = kinds.filter((step) => step.id.startsWith('setup-'));
             assert.strictEqual(setup.length, 17);
             for (const step of setup) {

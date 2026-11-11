@@ -158,6 +158,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(today.status, 200);
                 assert.strictEqual(today.json().source, 'ai');
                 assert.ok(aiCalls.some((call) => call.language === 'es'));
+                assert.ok(aiCalls.every((call) => !call.types.some((step) => step.id === 'meme')), 'disabled Meme events cannot become a daily step');
                 const beforeUnsignedChoice = aiCalls.length;
                 assert.strictEqual((await g.get('/api/v1/quests/today', { as: stranger })).json().source, 'rotation');
                 assert.strictEqual(aiCalls.length, beforeUnsignedChoice, 'no person data reaches AI before that person opts in');

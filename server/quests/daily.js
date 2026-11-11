@@ -97,6 +97,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         clientSecret: config.oauth.clientSecret, audience: 'openvibe.ai', fetchImpl,
     }) : null;
     const allTypes = async () => [...BASE_TYPES, ...(await db.many("SELECT * FROM daily_step_types WHERE status = 'approved' ORDER BY id")).map(wireType)];
+    const eventAvailable = (step) => step.event_type !== 'meme.caption.created' || config.events.memeEnabled;
     const read = async (day) => {
         const row = await db.maybe('SELECT * FROM daily_quests WHERE day = $1', [day]);
         return row && { date: row.day, title: row.title, story: row.story, steps: JSON.parse(row.steps_json), source: row.source };
@@ -135,7 +136,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (!DAY_RE.test(day) || !Number.isFinite(Date.parse(day + 'T00:00:00Z'))) return null;
         const existing = await read(day);
         if (existing) return existing;
-        const types = (await allTypes()).filter((step) => !step.match_task);
+        const types = (await allTypes()).filter((step) => !step.match_task && eventAvailable(step));
         const priorDay = utcDay(Date.parse(day + 'T00:00:00Z') - 86400000);
         const yesterday = await read(priorDay);
         let chosen = null, title = '', story = '', source = 'rotation';
@@ -167,7 +168,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const cached = await readPersonal(subject, day);
         if (cached) return cached;
         const preference = await aiPreference(subject);
-        const types = (await allTypes()).filter((step) => step.hook && step.help && step.daily_eligible !== false);
+        const types = (await allTypes()).filter((step) => step.hook && step.help && step.daily_eligible !== false && eventAvailable(step));
         const completedSetup = await db.many(`SELECT quest_id FROM quest_progress
             WHERE subject=$1 AND quest_id LIKE 'live-setup-%' AND count > 0`, [subject]);
         const completedIds = new Set(completedSetup.map((row) => row.quest_id.replace(/^live-setup-/, 'setup-')));
@@ -215,7 +216,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function putChannelQuest(subject, input) {
         const title = typeof input?.title === 'string' ? input.title.trim() : '';
-        const types = (await allTypes()).filter((step) => step.hook && step.help && !step.match_task && step.daily_eligible !== false);
+        const types = (await allTypes()).filter((step) => step.hook && step.help && !step.match_task && step.daily_eligible !== false && eventAvailable(step));
         const steps = validateSelection(input?.steps, types, null);
         if (!title || title.length > 80 || !steps) return null;
         await db.exec(`INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)

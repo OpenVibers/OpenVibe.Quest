@@ -56,10 +56,10 @@ function createTestSubjects({ config, s, fetchImpl = globalThis.fetch, log = con
         return subjects;
     }
 
-    /** Refresh once now, then hourly; a failure is logged and the last good list stays. */
-    function start() {
+    /** Refresh once now (unless the caller already awaited one), then hourly; a failure keeps the last good list. */
+    function start({ refreshNow = true } = {}) {
         if (timer) return timer;
-        refresh().catch((err) => { stats.failures++; log.warn && log.warn('[Test accounts] refresh failed:', err.message); });
+        if (refreshNow) refresh().catch((err) => { stats.failures++; log.warn && log.warn('[Test accounts] refresh failed:', err.message); });
         timer = setInterval(() => {
             refresh().catch((err) => { stats.failures++; log.warn && log.warn('[Test accounts] refresh failed:', err.message); });
         }, REFRESH_MS);

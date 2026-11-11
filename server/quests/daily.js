@@ -192,6 +192,20 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type },
             next_href: quest.steps[index + 1]?.href || null };
     }
+    async function channelQuest(subject) {
+        const row = await db.maybe('SELECT title,steps_json,updated_at FROM channel_daily_quests WHERE subject=$1', [subject]);
+        return row && { channel_subject: subject, title: row.title, steps: JSON.parse(row.steps_json), updated_at: row.updated_at };
+    }
+    async function putChannelQuest(subject, input) {
+        const title = typeof input?.title === 'string' ? input.title.trim() : '';
+        const types = (await allTypes()).filter((step) => step.hook && step.help);
+        const steps = validateSelection(input?.steps, types, null);
+        if (!title || title.length > 80 || !steps) return null;
+        await db.exec(`INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)
+            ON CONFLICT(subject) DO UPDATE SET title=EXCLUDED.title,steps_json=EXCLUDED.steps_json,updated_at=EXCLUDED.updated_at`,
+        [subject, title, JSON.stringify(steps.map(wireType)), s.iso()]);
+        return channelQuest(subject);
+    }
     async function publicQuest(day = utcDay(s.now())) {
         const q = day === utcDay(s.now()) ? await ensure(day) : await read(day);
         if (!q) return null;
@@ -299,6 +313,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, channelQuest, putChannelQuest, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

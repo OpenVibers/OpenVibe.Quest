@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Give guided picture, thread and calendar steps opaque per-person links and an authenticated step reader for the host page.
+- Let a channel owner save a quest made from guided catalogue steps through a default-off API.
 - Add the authenticated, network-origin CORS reader `GET /api/v1/quests/today`; keep progress private to its person.
 
 What changed in OpenVibe.Quest, newest first. Each site also publishes its patch notes at /updates.

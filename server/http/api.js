@@ -84,6 +84,21 @@ function createApi(ctx) {
         if (!answer) return problem(req, res, 404, 'quest.step_not_found', 'No guided step with that id today.');
         return res.json(answer);
     });
+    r.put('/me/channel-quest', limits.budget('quest.me.write'), async (req, res) => {
+        if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        if (req.principal.viaSession && !require('./principal').sameOrigin(req, config.baseUrl)) return problem(req, res, 403, 'request.cross_site', 'Use the same origin.');
+        const quest = await ctx.daily.putChannelQuest(req.principal.requester.slice(5), req.body);
+        if (!quest) return problem(req, res, 422, 'quest.invalid', 'Choose three guided catalogue steps on different sites and a title under 80 characters.');
+        return res.json(quest);
+    });
+    r.get('/channels/:subject/quest', limits.reads('quest.quests.read'), async (req, res) => {
+        if (!config.guidedTodayEnabled) return problem(req, res, 404, 'quest.guided_today_unavailable', 'Guided daily quests are not enabled.');
+        if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(req.params.subject)) return problem(req, res, 404, 'quest.not_found', 'No channel quest.');
+        const quest = await ctx.daily.channelQuest(req.params.subject);
+        if (!quest) return problem(req, res, 404, 'quest.not_found', 'No channel quest.');
+        return res.json(quest);
+    });
     r.put('/me/daily/time-zone', limits.budget('quest.me.write'), async (req, res) => {
         if (req.principal.kind !== 'user') return problem(req, res, 401, 'token.required', 'Send a person\'s Network token.');
         if (req.principal.viaSession && !require('./principal').sameOrigin(req, config.baseUrl)) return problem(req, res, 403, 'request.cross_site', 'Use the same origin.');

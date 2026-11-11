@@ -138,6 +138,16 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.strictEqual(resolved.json().step.hook, 'pics.upload');
                 assert.ok(resolved.json().next_href.includes('qstep='));
                 assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);
+                const channelPath = '/api/v1/me/channel-quest';
+                const request = { title: 'Make something together', steps: ['picture', 'thread', 'schedule'] };
+                assert.strictEqual((await g.get(channelPath, { method: 'PUT', json: request })).status, 401);
+                assert.strictEqual((await g.get(channelPath, { as: owner, method: 'PUT', headers: { 'sec-fetch-site': 'same-origin' }, json: { ...request, steps: ['picture', 'thread', 'wiki'] } })).status, 422);
+                const made = await g.get(channelPath, { as: owner, method: 'PUT', headers: { 'sec-fetch-site': 'same-origin' }, json: request });
+                assert.strictEqual(made.status, 200, made.text);
+                assert.deepStrictEqual(made.json().steps.map((step) => step.id), request.steps);
+                const publicQuest = await g.get(`/api/v1/channels/${owner.subject}/quest`);
+                assert.strictEqual(publicQuest.status, 200);
+                assert.strictEqual(publicQuest.json().title, request.title);
             } finally { await g.close(); }
         });
     } finally { await t.close(); }

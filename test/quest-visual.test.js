@@ -29,6 +29,14 @@ const { createGlyphDraftClient, nameForBadge, nameForDaily } = require('../serve
             assert.ok(index.text.includes('Quests by site') && index.text.includes('q-site-chip'));
             assert.ok(requests.some((x) => /^daily-\d{4}-\d{2}-\d{2}$/.test(x.name)), 'a unique daily drawing joins review');
         });
+        await check('an empty quest log is a kit empty state with its next button', async () => {
+            const fresh = t.network.addUser('newbie');
+            const me = await t.get('/me', { as: fresh });
+            assert.equal(me.status, 200);
+            assert.ok(me.text.includes('ovk-empty'), 'the shared kit empty state');
+            for (const word of ['Nothing started yet', 'No quests completed yet', 'No badges yet']) assert.ok(me.text.includes(word), word);
+            assert.ok(/ovk-btn[^>]*href="\/quests"/.test(me.text), 'the next action is a kit button');
+        });
         await check('only approved drawings replace the bundled glyph fallback', async () => {
             let me = await t.get('/me', { as: person });
             assert.ok(me.text.includes('data-icon="live"'), 'a bundled icon appears before review');

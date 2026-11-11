@@ -22,7 +22,7 @@ const BASE_TYPES = Object.freeze([
     ['reply', 'community.post.created', 'openvibe.community', 'Reply to a community thread', 'https://openvibe.community/', 1],
     ['comment', 'community.comment.created', 'openvibe.community', 'Comment on a post', 'https://openvibe.community/', 1],
     ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1, 'chat.message', 'Write a message to everyone, then press Send.'],
-    ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/w/board-games/chess/edit', 3, 'wiki.revision', 'Edit a page where you are an editor, then press Save revision.', false],
+    ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/w/openvibe/openvibe-wiki/edit', 3, 'wiki.revision', 'Edit a page where you are an editor, then press Save revision.', false],
     ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://dns.openvibe.tools/', 2, 'tools.job', 'Enter a domain and press Lookup to run the DNS tool.'],
     ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/upload', 3, 'video.upload', 'Choose a video, upload it, then make it public.'],
     ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2, 'pics.upload', 'Choose a picture to upload, then finish the upload form.'],

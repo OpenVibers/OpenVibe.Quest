@@ -12,19 +12,21 @@ const icons = require('./quest-icons');
 const { html } = require('./html');
 
 /**
- * What a quest pays: its badge (a text label), for some an item (OpenVibe.Inventory) and its OpenCoins. Every chip
- * says its type and what it is for, and the coin chip keeps its amount even while OpenCoins are off, so the catalog's
- * promise is visible rather than replaced by "soon". Never an "up to": the catalog's amount is the whole amount.
+ * What a quest pays, as one row of small chips (Opus, 2026-11-11: "turn the ugly badge text list into condensed icons"):
+ * the badge with its own mark and name, the item with its emoji and name, the OpenCoins with the coin and the amount.
+ * What each one is ("a badge on your profile", "a hat for your inventory", "start soon") is in the chip's title and in
+ * text a screen reader reads, so nothing is lost; the coin chip keeps its amount even while OpenCoins are off (dashed),
+ * so the catalog's promise is visible rather than replaced by "soon". Never an "up to".
  */
 function reward(quest, { coinsEnabled = false } = {}) {
     const badge = quest.reward.badge.name;
-    const badgeChip = html`<span class="reward-badge">Badge: <strong>${badge}</strong> <small>on your profile</small></span>`;
+    const badgeChip = html`<span class="reward-badge" title="A badge on your profile">${icons.glyph(icons.badge(quest.reward.badge.id, quest), 14)}<span class="sr-only">Badge: </span><strong>${badge}</strong><span class="sr-only"> on your profile</span></span>`;
     // An item for the person's OpenVibe.Inventory (server/quests/items.js), worn in chat and on their profile.
     const it = quest.reward.item;
-    const itemChip = it ? html`<span class="reward-item" title="${it.kind} for your OpenVibe inventory"><span aria-hidden="true">${it.emoji}</span> <strong>${it.name}</strong> <small>${it.kind} for your inventory</small></span>` : '';
+    const itemChip = it ? html`<span class="reward-item" title="${it.kind} for your OpenVibe inventory"><span aria-hidden="true">${it.emoji}</span> <strong>${it.name}</strong><span class="sr-only">, ${it.kind} for your inventory</span></span>` : '';
     if (quest.reward.coins <= 0) return html`<span class="reward">${badgeChip}${itemChip}</span>`;
-    if (!coinsEnabled) return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins soon"><strong>${quest.reward.coins}</strong> OpenCoins, <small>start soon</small></span></span>`;
-    return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins"><strong>${quest.reward.coins}</strong> OpenCoins</span></span>`;
+    if (!coinsEnabled) return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins soon" title="OpenCoins start soon">${icons.glyph('coin', 14)}<strong>${quest.reward.coins}</strong> OpenCoins<span class="sr-only">, start soon</span></span></span>`;
+    return html`<span class="reward">${badgeChip}${itemChip}<span class="reward-coins" title="${quest.reward.coins} OpenCoins">${icons.glyph('coin', 14)}<strong>${quest.reward.coins}</strong> OpenCoins</span></span>`;
 }
 
 /**
@@ -120,7 +122,7 @@ const seriesSvg = (series) => art.svg({ hue: hueOf(series.id), mark: String(seri
 
 /** "Earned by 3 people": how many have a quest's badge (a count, never who), or nothing at 0. */
 function earnedBy(n) {
-    return n > 0 ? html`<p class="quest-count">Earned by ${n} ${n === 1 ? 'person' : 'people'}</p>` : '';
+    return n > 0 ? html`<span class="quest-count">${icons.glyph('star', 13)}Earned by ${n} ${n === 1 ? 'person' : 'people'}</span>` : '';
 }
 
 /**
@@ -157,15 +159,14 @@ function card(quest, { coinsEnabled = false, earned = false, counts = null, seen
     const date = completedAt ? String(completedAt).slice(0, 10) : '';
     // A completion means every step reached its target; show that even if the progress rows were not the reason.
     const stepSeen = done && seen ? new Map(quest.steps.map((s, i) => [i, s.count])) : seen;
-    return html`<li class="quest${done ? ' is-completed' : ''}">
+    return html`<li class="quest${done ? ' is-completed' : ''}" style="--h:${hueOf(quest.id)}">
     ${medal(quest, { earned: done })}
     <div class="quest-main">
     <a class="quest-title" href="/quests/${quest.id}">${quest.title}</a> <span class="q-site-chip">${icons.glyph(icons.site(quest.site), 16)}${shortSite(quest.site)}</span> ${stateChip(done)}
     <p class="quest-why">${quest.why}</p>
     <ul class="quest-steps">${quest.steps.map((s, i) => stepLine(s, i, stepSeen))}</ul>
-    <p class="quest-reward">${reward(quest, { coinsEnabled })}</p>
+    <div class="quest-foot"><p class="quest-reward">${reward(quest, { coinsEnabled })}</p>${counts ? earnedBy(counts.get(quest.id) || 0) : ''}</div>
     ${done && completedAt ? html`<p class="quest-earned">Completed <time datetime="${completedAt}">${date}</time> · Badge: <strong>${quest.reward.badge.name}</strong></p>` : ''}
-    ${counts ? earnedBy(counts.get(quest.id) || 0) : ''}
     </div>
 </li>`;
 }
@@ -181,7 +182,7 @@ function seriesCard(series, { coinsEnabled = false, counts = null } = {}) {
     <a class="quest-title" href="/series/${series.id}">${series.title}</a>
     <p class="quest-why">${series.why}</p>
     <p class="quest-reward"><span class="reward"><span class="reward-badge"><strong>${n}</strong> quests, a badge each</span>${coins > 0 ? html`<span class="reward-coins${coinsEnabled ? '' : ' soon'}"><strong>${coins}</strong> OpenCoins in all${coinsEnabled ? '' : html`, <small>start soon</small>`}</span>` : ''}</span></p>
-    ${done > 0 ? html`<p class="quest-count">${done} ${done === 1 ? 'badge' : 'badges'} earned in this series</p>` : ''}
+    ${done > 0 ? html`<p class="quest-foot"><span class="quest-count">${icons.glyph('star', 13)}${done} ${done === 1 ? 'badge' : 'badges'} earned in this series</span></p>` : ''}
     </div>
 </li>`;
 }
@@ -196,7 +197,7 @@ function appCard(q, { seen = null, completedAt = null } = {}) {
     <a class="quest-title" href="/apps/quests/${q.id}">${q.title}</a> ${stateChip(done)}
     ${q.why ? html`<p class="quest-why">${q.why}</p>` : ''}
     <ul class="quest-steps">${q.steps.map((s, i) => stepLine(s, i, stepSeen))}</ul>
-    <p class="quest-reward"><span class="reward"><span class="reward-badge">Badge: <strong>${q.reward.badge.name}</strong> <small>on your profile</small></span></span></p>
+    <p class="quest-reward"><span class="reward"><span class="reward-badge" title="A badge on your profile">${icons.glyph(icons.badge(q.reward.badge.id, q), 14)}<span class="sr-only">Badge: </span><strong>${q.reward.badge.name}</strong><span class="sr-only"> on your profile</span></span></span></p>
     ${done && completedAt ? html`<p class="quest-earned">Completed <time datetime="${completedAt}">${String(completedAt).slice(0, 10)}</time> · Badge: <strong>${q.reward.badge.name}</strong></p>` : ''}
     ${q.url ? html`<p class="quest-count"><a href="${q.url}" rel="nofollow noopener">Where to do it</a></p>` : ''}
     </div>

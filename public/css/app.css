@@ -265,3 +265,29 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 /* Under a site's own heading a card does not repeat the site (say it once); the chip stays wherever a card stands
    alone, on a quest's page and in the quest log. */
 .site-group .quest .q-site-chip { display: none; }
+
+/* ── Quest cards, condensed (Opus, 2026-11-11; asks 61-62) ──
+   The medal is the quest's own mark on its colour; the rewards are one row of small chips (the badge's mark and name,
+   the item's emoji and name, the coin and amount), with "Earned by N" at the end of the same row. Hover lifts the card
+   and turns the medal a little; a tap gives the same press. Phones: a 44 px medal and tighter padding. */
+.quest { gap: 12px; padding: 14px; }
+.quest .medal { width: 48px; height: 48px; transition: transform .25s cubic-bezier(.2, .8, .3, 1.3); }
+.quest:hover .medal, .quest:focus-within .medal { transform: rotate(-8deg) scale(1.06); }
+.quest:active { transform: scale(.995); }
+.quest-why { margin: 3px 0 8px; }
+.quest-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin: 0; }
+.reward { gap: 6px; }
+.reward-badge, .reward-coins, .reward-item { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 2px 10px 2px 7px; font-size: .78rem; line-height: 1.2; }
+.reward-badge .q-glyph, .reward-badge .ov-icon { color: hsl(var(--h, 220) 80% 72%); }
+.quest .reward-badge { border-color: color-mix(in srgb, var(--text-primary, #e6edf7) 16%, transparent); background: color-mix(in srgb, var(--text-primary, #e6edf7) 4%, transparent); }
+.reward-coins strong { color: inherit; }
+.quest-count { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: .8rem; }
+.quest-count .q-glyph { color: inherit; }
+.quest .quest-steps { margin-bottom: 8px; }
+/* A step's words stay beside its mark and wrap there (they dropped to their own line under it). */
+.quest-steps li > span:not([class]) { flex: 1 1 12ch; min-width: 0; }
+@media (max-width: 520px) {
+    .quest { grid-template-columns: 44px minmax(0, 1fr); padding: 12px; gap: 10px; }
+    .quest .medal { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .quest .medal { transition: none; } .quest:hover .medal, .quest:focus-within .medal { transform: none; } .quest:active { transform: none; } }

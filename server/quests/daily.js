@@ -6,6 +6,14 @@ const { randomBytes } = require('node:crypto');
 const catalog = require('./catalog');
 const { personOf } = require('./apply');
 const store = require('./store');
+const SETUP_DAILY = new Set(['slot', 'method', 'profile', 'offline', 'emote', 'panels', 'share', 'moderation', 'paste']);
+const SETUP_TYPES = catalog.QUESTS.flatMap((quest) => quest.steps
+    .filter((step) => step.event_type === 'live.setup.task_completed' && step.match?.task)
+    .map((step) => Object.freeze({ id: `setup-${step.match.task}`, event_type: step.event_type,
+        site: 'openvibe.live', sentence: quest.title, href: 'https://openvibe.live/?guide=setup-hub',
+        weight: 3, hook: `live.setup.${step.match.task}`, help: quest.why, match_task: step.match.task,
+        daily_eligible: SETUP_DAILY.has(step.match.task), count: 1,
+        verification: 'the matching setup task event for this person', status: 'approved', source: 'quest' })));
 
 const BASE_TYPES = Object.freeze([
     ['go-live', 'live.stream.started', 'openvibe.live', 'Go live for a stream', 'https://openvibe.live/broadcast', 3],
@@ -25,7 +33,7 @@ const BASE_TYPES = Object.freeze([
 ].map(([id, event_type, site, sentence, href, weight, hook, help]) => Object.freeze({
     id, event_type, site, sentence, href, weight, hook, help, count: 1, verification: 'event subject, count within the person\'s local day',
     status: 'approved', source: 'quest',
-})));
+})).concat(SETUP_TYPES));
 const KNOWN_TOPICS = new Set(catalog.EVENT_TYPES);
 for (const t of BASE_TYPES) if (!KNOWN_TOPICS.has(t.event_type)) throw new Error(`Unknown daily event topic: ${t.event_type}`);
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -65,6 +73,7 @@ function rotation(day, types, yesterday) {
 function wireType(t) {
     return { id: t.id, event_type: t.event_type, site: t.site, sentence: t.sentence, href: t.href,
         ...(t.hook ? { hook: t.hook, help: t.help } : {}),
+        ...(t.match_task ? { match_task: t.match_task, daily_eligible: t.daily_eligible } : {}),
         weight: Number(t.weight), count: 1, verification: 'event subject, count within the person\'s local day',
         status: t.status, source: t.source || t.project_id };
 }
@@ -124,7 +133,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (!DAY_RE.test(day) || !Number.isFinite(Date.parse(day + 'T00:00:00Z'))) return null;
         const existing = await read(day);
         if (existing) return existing;
-        const types = await allTypes();
+        const types = (await allTypes()).filter((step) => !step.match_task);
         const priorDay = utcDay(Date.parse(day + 'T00:00:00Z') - 86400000);
         const yesterday = await read(priorDay);
         let chosen = null, title = '', story = '', source = 'rotation';
@@ -156,12 +165,16 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const cached = await readPersonal(subject, day);
         if (cached) return cached;
         const preference = await aiPreference(subject);
-        const types = (await allTypes()).filter((step) => step.hook && step.help);
+        const types = (await allTypes()).filter((step) => step.hook && step.help && step.daily_eligible !== false);
+        const completedSetup = await db.many(`SELECT quest_id FROM quest_progress
+            WHERE subject=$1 AND quest_id LIKE 'live-setup-%' AND count > 0`, [subject]);
+        const completedIds = new Set(completedSetup.map((row) => row.quest_id.replace(/^live-setup-/, 'setup-')));
         const since = new Date(s.now() - 30 * 86400000).toISOString();
-        const history = await db.many('SELECT DISTINCT event_type FROM daily_events WHERE subject=$1 AND occurred_at >= $2', [subject, since]);
-        const done = new Set(history.map((x) => x.event_type));
-        const fresh = types.filter((x) => !done.has(x.event_type));
-        const candidates = fresh.length >= 3 ? fresh : types;
+        const history = await db.many('SELECT DISTINCT event_type,event_detail FROM daily_events WHERE subject=$1 AND occurred_at >= $2', [subject, since]);
+        const done = new Set(history.map((x) => `${x.event_type}:${x.event_detail || ''}`));
+        const available = types.filter((step) => !completedIds.has(step.id));
+        const fresh = available.filter((step) => !done.has(`${step.event_type}:${step.match_task || ''}`));
+        const candidates = fresh.length >= 3 ? fresh : available;
         let chosen = null, title = '', story = '', source = 'rotation', lines = null;
         if (preference.ai_text_enabled) try {
             const ai = await generateAi(day, candidates, null, preference.language);
@@ -174,7 +187,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         } catch (err) { log.warn('[Daily quest] Personal AI unavailable:', err.message); }
         if (!chosen) {
             try { chosen = rotation(day, candidates, null); }
-            catch { chosen = rotation(day, types, null); }
+            catch { chosen = rotation(day, available, null); }
             title = 'Make your way around OpenVibe';
             story = 'Three small things, across the network, to make today yours.';
         }
@@ -199,7 +212,7 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function putChannelQuest(subject, input) {
         const title = typeof input?.title === 'string' ? input.title.trim() : '';
-        const types = (await allTypes()).filter((step) => step.hook && step.help);
+        const types = (await allTypes()).filter((step) => step.hook && step.help && !step.match_task);
         const steps = validateSelection(input?.steps, types, null);
         if (!title || title.length > 80 || !steps) return null;
         await db.exec(`INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)
@@ -240,8 +253,9 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (!subject || !KNOWN_TOPICS.has(event.event_type)) return null;
         const occurred = new Date(event.timestamp);
         if (!Number.isFinite(occurred.getTime()) || Math.abs(s.now() - occurred.getTime()) > 3 * 86400000) return null;
-        await tx.exec(`INSERT INTO daily_events (event_id,subject,event_type,occurred_at) VALUES ($1,$2,$3,$4)
-            ON CONFLICT (event_id) DO NOTHING`, [event.event_id, subject, event.event_type, occurred.toISOString()]);
+        const detail = event.event_type === 'live.setup.task_completed' && typeof event.payload?.task === 'string' ? event.payload.task : null;
+        await tx.exec(`INSERT INTO daily_events (event_id,subject,event_type,occurred_at,event_detail) VALUES ($1,$2,$3,$4,$5)
+            ON CONFLICT (event_id) DO NOTHING`, [event.event_id, subject, event.event_type, occurred.toISOString(), detail]);
         return subject;
     }
     // Read-only: unlike progress(), a card must never ensure quests or settle rewards.
@@ -263,12 +277,14 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const q = selectedQuest || await ensure(day);
         if (!q) return null;
         const start = new Date(day + 'T00:00:00Z').getTime();
-        const events = await db.many(`SELECT event_type,occurred_at FROM daily_events
+        const events = await db.many(`SELECT event_type,occurred_at,event_detail FROM daily_events
             WHERE subject=$1 AND occurred_at >= $2 AND occurred_at < $3`,
         [subject, new Date(start - 86400000).toISOString(), new Date(start + 2 * 86400000).toISOString()]);
         const local = events.filter((e) => localDay(e.occurred_at, zone) === day);
-        const steps = q.steps.map((step) => ({ ...step, progress: Math.min(step.count, local.filter((e) => e.event_type === step.event_type).length),
-            done: local.some((e) => e.event_type === step.event_type) }));
+        const counts = (step) => local.filter((event) => event.event_type === step.event_type
+            && (!step.match_task || event.event_detail === step.match_task)).length;
+        const steps = q.steps.map((step) => ({ ...step, progress: Math.min(step.count, counts(step)),
+            done: counts(step) >= step.count }));
         const done = steps.every((step) => step.done);
         if (done && savedZone) {
             const at = s.iso();

@@ -82,6 +82,12 @@ const rowsFor = async (t, table, subject) => Number(await t.ctx.s.db.value(`SELE
                 [A, '2026-11-08', 'Your quest', 'For you', '[]', 'rotation', '2026-11-08T00:00:00Z']);
             await t.ctx.s.db.exec('INSERT INTO daily_personal_quests(subject,day,title,story,steps_json,source,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',
                 [B, '2026-11-08', 'Other quest', 'For someone else', '[]', 'rotation', '2026-11-08T00:00:00Z']);
+            for (const subject of [A, B]) {
+                await t.ctx.s.db.exec('INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)',
+                    [subject, 'Channel quest', '[]', '2026-11-08T00:00:00Z']);
+                await t.ctx.s.db.exec('INSERT INTO daily_ai_choices(id,subject,enabled,language,text_version,chosen_at) VALUES($1,$2,$3,$4,$5,$6)',
+                    [t.ctx.s.newId('qac'), subject, true, 'en', 'quest-ai-text-1', '2026-11-08T00:00:00Z']);
+            }
 
             const res = await t.get('/internal/events', { method: 'POST', body: bodyOf(exportEvent), headers: { 'Content-Type': 'application/json', ...signDeliveryHeaders(bodyOf(exportEvent), SECRET) } });
             assert.strictEqual(res.status, 200);
@@ -91,7 +97,7 @@ const rowsFor = async (t, table, subject) => Number(await t.ctx.s.db.value(`SELE
             assert.ok(part, 'the part was pushed to Network');
             assert.strictEqual(part.auth, 'Bearer tok_quest', 'with this service\'s own token');
             assert.strictEqual(part.body.subject, A);
-            assert.deepStrictEqual(part.body.files.map((f) => f.name).sort(), ['badges.json', 'completions.json', 'daily-personal-quests.json', 'progress.json']);
+            assert.deepStrictEqual(part.body.files.map((f) => f.name).sort(), ['badges.json', 'channel-daily-quests.json', 'completions.json', 'daily-ai-choices.json', 'daily-personal-quests.json', 'progress.json']);
             for (const file of part.body.files) {
                 assert.strictEqual(file.content.length, 1, `one row for ${file.name}`);
                 assert.strictEqual(file.content[0].subject, A, `only A's rows in ${file.name}`);
@@ -115,6 +121,12 @@ const rowsFor = async (t, table, subject) => Number(await t.ctx.s.db.value(`SELE
         try {
             await makeRows(t, A, { questId: 'go-live', badgeId: 'first-broadcast' });
             await makeRows(t, B, { questId: 'follow-someone', badgeId: 'first-follow' });
+            for (const subject of [A, B]) {
+                await t.ctx.s.db.exec('INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)',
+                    [subject, 'Channel quest', '[]', '2026-11-08T00:00:00Z']);
+                await t.ctx.s.db.exec('INSERT INTO daily_ai_choices(id,subject,enabled,language,text_version,chosen_at) VALUES($1,$2,$3,$4,$5,$6)',
+                    [t.ctx.s.newId('qac'), subject, true, 'en', 'quest-ai-text-1', '2026-11-08T00:00:00Z']);
+            }
 
             const res = await t.get('/internal/events', { method: 'POST', body: bodyOf(deleteEvent), headers: { 'Content-Type': 'application/json', ...signDeliveryHeaders(bodyOf(deleteEvent), SECRET) } });
             assert.strictEqual(res.status, 200);
@@ -123,12 +135,16 @@ const rowsFor = async (t, table, subject) => Number(await t.ctx.s.db.value(`SELE
                 assert.strictEqual(await rowsFor(t, table, A), 0, `the person's rows are gone from ${table}`);
                 assert.strictEqual(await rowsFor(t, table, B), 1, `someone else's row stays in ${table}`);
             }
+            for (const table of ['channel_daily_quests', 'daily_ai_choices']) {
+                assert.strictEqual(await rowsFor(t, table, A), 0, `the person's rows are gone from ${table}`);
+                assert.strictEqual(await rowsFor(t, table, B), 1, `someone else's row stays in ${table}`);
+            }
             // A bare network.account.deleted is never claimed by the quest inbox.
             assert.strictEqual(Number(await t.ctx.s.db.value('SELECT count(*)::int FROM quest_event_inbox WHERE event_id = $1', [deleteEvent.event_id])), 0, 'the deletion is not claimed by quest_event_inbox');
 
             const confirmation = stub.calls.find((c) => c.url === `/internal/account-deletions/${DEL}/confirmations`);
             assert.ok(confirmation, 'the confirmation was sent');
-            assert.deepStrictEqual(confirmation.body.erased, { quest_progress: 1, quest_completions: 1, quest_badges: 1 });
+            assert.deepStrictEqual(confirmation.body.erased, { quest_progress: 1, quest_completions: 1, quest_badges: 1, channel_daily_quests: 1, daily_ai_choices: 1 });
             assert.deepStrictEqual(confirmation.body.retained, {});
             assert.ok(!Number.isNaN(Date.parse(confirmation.body.completed_at)));
 

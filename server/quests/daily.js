@@ -2,6 +2,7 @@
 
 /** One shared daily quest. Events are kept without payloads so local-day progress can be recalculated safely. */
 const { serviceAuth } = require('openvibe-contracts');
+const { randomBytes } = require('node:crypto');
 const catalog = require('./catalog');
 const { personOf } = require('./apply');
 const store = require('./store');
@@ -9,19 +10,20 @@ const store = require('./store');
 const BASE_TYPES = Object.freeze([
     ['go-live', 'live.stream.started', 'openvibe.live', 'Go live for a stream', 'https://openvibe.live/broadcast', 3],
     ['follow', 'network.follow.created', 'openvibe.network', 'Follow someone new', 'https://openvibe.network/', 1],
-    ['thread', 'community.thread.created', 'openvibe.community', 'Start a community thread', 'https://openvibe.community/', 2],
+    ['thread', 'community.thread.created', 'openvibe.community', 'Start a community thread', 'https://openvibe.community/forum/general/new', 2, 'community.thread', 'Write a title and message, then press Post thread.'],
     ['reply', 'community.post.created', 'openvibe.community', 'Reply to a community thread', 'https://openvibe.community/', 1],
     ['comment', 'community.comment.created', 'openvibe.community', 'Comment on a post', 'https://openvibe.community/', 1],
     ['chat', 'chat.room.message.created', 'openvibe.chat', 'Send a public chat message', 'https://openvibe.chat/', 1],
     ['wiki', 'wiki.revision.created', 'openvibe.wiki', 'Improve a wiki page', 'https://openvibe.wiki/', 3],
     ['tool', 'tools.job.created', 'openvibe.tools', 'Use a tool', 'https://openvibe.tools/', 2],
     ['video', 'mediahub.video.published', 'openvibe.video', 'Publish a video', 'https://openvibe.video/', 3],
-    ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2],
+    ['picture', 'mediahub.picture.uploaded', 'openvibe.pics', 'Upload a picture', 'https://openvibe.pics/', 2, 'pics.upload', 'Choose a picture to upload, then finish the upload form.'],
+    ['schedule', 'today.event.scheduled', 'openvibe.today', 'Schedule a stream or event', 'https://openvibe.today/schedule', 2, 'today.schedule', 'Choose a time and press Schedule it.'],
     ['vote', 'deals.vote.changed', 'openvibe.deals', 'Vote on a deal', 'https://openvibe.deals/', 1],
     ['blog', 'blog.post.published', 'openvibe.blog', 'Publish a blog post', 'https://openvibe.blog/', 3],
     ['world', 'games.world.published', 'openvibe.games', 'Publish a world', 'https://openvibe.games/', 3],
-].map(([id, event_type, site, sentence, href, weight]) => Object.freeze({
-    id, event_type, site, sentence, href, weight, count: 1, verification: 'event subject, count within the person\'s local day',
+].map(([id, event_type, site, sentence, href, weight, hook, help]) => Object.freeze({
+    id, event_type, site, sentence, href, weight, hook, help, count: 1, verification: 'event subject, count within the person\'s local day',
     status: 'approved', source: 'quest',
 })));
 const KNOWN_TOPICS = new Set(catalog.EVENT_TYPES);
@@ -62,8 +64,19 @@ function rotation(day, types, yesterday) {
 }
 function wireType(t) {
     return { id: t.id, event_type: t.event_type, site: t.site, sentence: t.sentence, href: t.href,
+        ...(t.hook ? { hook: t.hook, help: t.help } : {}),
         weight: Number(t.weight), count: 1, verification: 'event subject, count within the person\'s local day',
         status: t.status, source: t.source || t.project_id };
+}
+function guidedStep(step) {
+    const value = wireType(step);
+    if (value.hook) {
+        value.guide_id = randomBytes(12).toString('base64url');
+        const url = new URL(value.href);
+        url.searchParams.set('qstep', value.guide_id);
+        value.href = url.toString();
+    }
+    return value;
 }
 
 function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, aiGenerate, log = console }) {
@@ -90,12 +103,12 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
                 .map((x) => ({ service: String(x.service || ''), title: String(x.title || x.message || '').slice(0, 140) }));
         } catch { return []; }
     }
-    async function generateAi(day, types, yesterday) {
-        if (aiGenerate) return aiGenerate({ day, types, yesterday, changes: await latestChanges(), preset: 'cheapest' });
+    async function generateAi(day, types, yesterday, language = 'en') {
+        if (aiGenerate) return aiGenerate({ day, types, yesterday, language, changes: await latestChanges(), preset: 'cheapest' });
         if (!token) return null;
         const prompt = JSON.stringify({ day, types: types.map(({ id, site, sentence, weight }) => ({ id, site, sentence, weight })),
             yesterday: yesterday ? yesterday.map((s) => s.id) : [], changes: await latestChanges(),
-            task: 'Choose exactly three supplied step ids across at least two sites. Never invent a step or name a person. Write an English title (max 80 characters), a one-line story (max 180 characters), and one short actionable line per chosen id (max 120 characters). Return JSON {steps:[ids],title,story,lines:{id:line}}.' });
+            task: `Choose exactly three supplied step ids across at least two sites. Never invent a step or name a person. Write in ${language}. Title max 80 characters, story max 180 characters, and one actionable line per chosen id max 120 characters. Return JSON {steps:[ids],title,story,lines:{id:line}}.` });
         const res = await fetchImpl(`${process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700'}/api/v1/runs?wait=60000`, {
             method: 'POST', headers: { ...(await token.authHeaders()), 'Content-Type': 'application/json' },
             body: JSON.stringify({ workflow: 'ai.complete', input: { messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, max_tokens: 300 }, options: { latency: 'background' } }),
@@ -142,15 +155,16 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const day = localDay(s.iso(), zone);
         const cached = await readPersonal(subject, day);
         if (cached) return cached;
-        const types = await allTypes();
+        const preference = await aiPreference(subject);
+        const types = (await allTypes()).filter((step) => step.hook && step.help);
         const since = new Date(s.now() - 30 * 86400000).toISOString();
         const history = await db.many('SELECT DISTINCT event_type FROM daily_events WHERE subject=$1 AND occurred_at >= $2', [subject, since]);
         const done = new Set(history.map((x) => x.event_type));
         const fresh = types.filter((x) => !done.has(x.event_type));
         const candidates = fresh.length >= 3 ? fresh : types;
         let chosen = null, title = '', story = '', source = 'rotation', lines = null;
-        try {
-            const ai = await generateAi(day, candidates, null);
+        if (preference.ai_text_enabled) try {
+            const ai = await generateAi(day, candidates, null, preference.language);
             chosen = ai && validateSelection(ai.steps, candidates, null);
             if (chosen && typeof ai.title === 'string' && ai.title.trim() && ai.title.length <= 80
                 && typeof ai.story === 'string' && ai.story.trim() && ai.story.length <= 180
@@ -167,8 +181,31 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         if (lines) chosen = chosen.map((step) => ({ ...step, sentence: lines[step.id].trim() }));
         await db.exec(`INSERT INTO daily_personal_quests(subject,day,title,story,steps_json,source,created_at)
             VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(subject,day) DO NOTHING`,
-        [subject, day, title, story, JSON.stringify(chosen.map(wireType)), source, s.iso()]);
+        [subject, day, title, story, JSON.stringify(chosen.map(guidedStep)), source, s.iso()]);
         return readPersonal(subject, day);
+    }
+    async function resolveStep(subject, id) {
+        if (!/^[A-Za-z0-9_-]{16}$/.test(id || '')) return null;
+        const quest = await ensurePersonal(subject);
+        const index = quest.steps.findIndex((step) => step.guide_id === id);
+        if (index < 0) return null;
+        const step = quest.steps[index];
+        return { step: { id: step.id, hook: step.hook, help: step.help, event_type: step.event_type },
+            next_href: quest.steps[index + 1]?.href || null };
+    }
+    async function channelQuest(subject) {
+        const row = await db.maybe('SELECT title,steps_json,updated_at FROM channel_daily_quests WHERE subject=$1', [subject]);
+        return row && { channel_subject: subject, title: row.title, steps: JSON.parse(row.steps_json), updated_at: row.updated_at };
+    }
+    async function putChannelQuest(subject, input) {
+        const title = typeof input?.title === 'string' ? input.title.trim() : '';
+        const types = (await allTypes()).filter((step) => step.hook && step.help);
+        const steps = validateSelection(input?.steps, types, null);
+        if (!title || title.length > 80 || !steps) return null;
+        await db.exec(`INSERT INTO channel_daily_quests(subject,title,steps_json,updated_at) VALUES($1,$2,$3,$4)
+            ON CONFLICT(subject) DO UPDATE SET title=EXCLUDED.title,steps_json=EXCLUDED.steps_json,updated_at=EXCLUDED.updated_at`,
+        [subject, title, JSON.stringify(steps.map(wireType)), s.iso()]);
+        return channelQuest(subject);
     }
     async function publicQuest(day = utcDay(s.now())) {
         const q = day === utcDay(s.now()) ? await ensure(day) : await read(day);
@@ -183,6 +220,20 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function zoneOf(subject) {
         return (await db.value('SELECT time_zone FROM daily_preferences WHERE subject = $1', [subject])) || 'UTC';
+    }
+    async function aiPreference(subject) {
+        const row = await db.maybe('SELECT ai_text_enabled,language FROM daily_preferences WHERE subject=$1', [subject]);
+        return { ai_text_enabled: !!row?.ai_text_enabled, language: row?.language || 'en', text_version: 'quest-ai-text-1' };
+    }
+    async function setAiPreference(subject, enabled, language) {
+        if (typeof enabled !== 'boolean' || !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(language || '')) return null;
+        const at = s.iso();
+        await db.exec(`INSERT INTO daily_preferences(subject,ai_text_enabled,language) VALUES($1,$2,$3)
+            ON CONFLICT(subject) DO UPDATE SET ai_text_enabled=EXCLUDED.ai_text_enabled,language=EXCLUDED.language`,
+        [subject, enabled, language]);
+        await db.exec('INSERT INTO daily_ai_choices(id,subject,enabled,language,text_version,chosen_at) VALUES($1,$2,$3,$4,$5,$6)',
+            [s.newId('qac'), subject, enabled, language, 'quest-ai-text-1', at]);
+        return aiPreference(subject);
     }
     async function recordEvent(tx, event) {
         const subject = personOf(event);
@@ -277,6 +328,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, channelQuest, putChannelQuest, aiPreference, setAiPreference, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

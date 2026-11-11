@@ -117,6 +117,50 @@ const { ids, serviceAuth } = require('openvibe-contracts');
                 assert.deepStrictEqual(rows.map(r => [Number(r.coins), r.coins_state]), [[5, 'credited']]);
             } finally { await c.close(); }
         });
+        await check('opaque guide links resolve only for their signed-in owner', async () => {
+            const aiCalls = [];
+            const g = await boot({ now: () => Date.parse('2026-11-08T12:00:00Z'), env: { QUEST_GUIDED_TODAY: 'on' },
+                aiGenerate: async (input) => { aiCalls.push(input); return ({ steps: ['picture', 'thread', 'schedule'], title: 'Make something', story: 'Three places.',
+                    lines: { picture: 'Upload a picture', thread: 'Start a thread', schedule: 'Schedule something' } }); } });
+            try {
+                const owner = g.network.addUser('guide-owner');
+                const stranger = g.network.addUser('guide-stranger');
+                const aiPath = '/api/v1/me/daily/ai-text';
+                assert.strictEqual((await g.get(aiPath, { as: owner })).json().ai_text_enabled, false);
+                const choice = await g.get(aiPath, { as: owner, method: 'PUT', headers: { 'sec-fetch-site': 'same-origin' },
+                    json: { enabled: true, language: 'es', text_version: 'quest-ai-text-1' } });
+                assert.strictEqual(choice.status, 200, choice.text);
+                const today = await g.get('/api/v1/quests/today', { as: owner });
+                assert.strictEqual(today.status, 200);
+                assert.strictEqual(today.json().source, 'ai');
+                assert.ok(aiCalls.some((call) => call.language === 'es'));
+                const beforeUnsignedChoice = aiCalls.length;
+                assert.strictEqual((await g.get('/api/v1/quests/today', { as: stranger })).json().source, 'rotation');
+                assert.strictEqual(aiCalls.length, beforeUnsignedChoice, 'no person data reaches AI before that person opts in');
+                const picture = today.json().steps.find((step) => step.id === 'picture');
+                assert.match(picture.href, /^https:\/\/openvibe\.pics\/\?qstep=[A-Za-z0-9_-]{16}$/);
+                assert.strictEqual(picture.hook, 'pics.upload');
+                const id = new URL(picture.href).searchParams.get('qstep');
+                const path = `/api/v1/quests/today/steps/${id}`;
+                assert.strictEqual((await g.get(path)).status, 401);
+                assert.strictEqual((await g.get(path, { as: stranger })).status, 404);
+                const resolved = await g.get(path, { as: owner });
+                assert.strictEqual(resolved.status, 200);
+                assert.strictEqual(resolved.json().step.hook, 'pics.upload');
+                assert.ok(resolved.json().next_href === null || resolved.json().next_href.includes('qstep='));
+                assert.strictEqual(require('../server/quests/apply').personOf({ event_type: 'today.event.scheduled', actor: { type: 'user', id: owner.subject } }), owner.subject);
+                const channelPath = '/api/v1/me/channel-quest';
+                const request = { title: 'Make something together', steps: ['picture', 'thread', 'schedule'] };
+                assert.strictEqual((await g.get(channelPath, { method: 'PUT', json: request })).status, 401);
+                assert.strictEqual((await g.get(channelPath, { as: owner, method: 'PUT', headers: { 'sec-fetch-site': 'same-origin' }, json: { ...request, steps: ['picture', 'thread', 'wiki'] } })).status, 422);
+                const made = await g.get(channelPath, { as: owner, method: 'PUT', headers: { 'sec-fetch-site': 'same-origin' }, json: request });
+                assert.strictEqual(made.status, 200, made.text);
+                assert.deepStrictEqual(made.json().steps.map((step) => step.id), request.steps);
+                const publicQuest = await g.get(`/api/v1/channels/${owner.subject}/quest`);
+                assert.strictEqual(publicQuest.status, 200);
+                assert.strictEqual(publicQuest.json().title, request.title);
+            } finally { await g.close(); }
+        });
     } finally { await t.close(); }
     done();
 })().catch((err) => { process.stderr.write(String(err.stack || err) + '\n'); process.exit(1); });

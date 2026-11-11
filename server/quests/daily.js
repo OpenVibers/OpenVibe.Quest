@@ -103,12 +103,12 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
                 .map((x) => ({ service: String(x.service || ''), title: String(x.title || x.message || '').slice(0, 140) }));
         } catch { return []; }
     }
-    async function generateAi(day, types, yesterday) {
-        if (aiGenerate) return aiGenerate({ day, types, yesterday, changes: await latestChanges(), preset: 'cheapest' });
+    async function generateAi(day, types, yesterday, language = 'en') {
+        if (aiGenerate) return aiGenerate({ day, types, yesterday, language, changes: await latestChanges(), preset: 'cheapest' });
         if (!token) return null;
         const prompt = JSON.stringify({ day, types: types.map(({ id, site, sentence, weight }) => ({ id, site, sentence, weight })),
             yesterday: yesterday ? yesterday.map((s) => s.id) : [], changes: await latestChanges(),
-            task: 'Choose exactly three supplied step ids across at least two sites. Never invent a step or name a person. Write an English title (max 80 characters), a one-line story (max 180 characters), and one short actionable line per chosen id (max 120 characters). Return JSON {steps:[ids],title,story,lines:{id:line}}.' });
+            task: `Choose exactly three supplied step ids across at least two sites. Never invent a step or name a person. Write in ${language}. Title max 80 characters, story max 180 characters, and one actionable line per chosen id max 120 characters. Return JSON {steps:[ids],title,story,lines:{id:line}}.` });
         const res = await fetchImpl(`${process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700'}/api/v1/runs?wait=60000`, {
             method: 'POST', headers: { ...(await token.authHeaders()), 'Content-Type': 'application/json' },
             body: JSON.stringify({ workflow: 'ai.complete', input: { messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, max_tokens: 300 }, options: { latency: 'background' } }),
@@ -155,15 +155,16 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         const day = localDay(s.iso(), zone);
         const cached = await readPersonal(subject, day);
         if (cached) return cached;
-        const types = await allTypes();
+        const preference = await aiPreference(subject);
+        const types = (await allTypes()).filter((step) => step.hook && step.help);
         const since = new Date(s.now() - 30 * 86400000).toISOString();
         const history = await db.many('SELECT DISTINCT event_type FROM daily_events WHERE subject=$1 AND occurred_at >= $2', [subject, since]);
         const done = new Set(history.map((x) => x.event_type));
         const fresh = types.filter((x) => !done.has(x.event_type));
         const candidates = fresh.length >= 3 ? fresh : types;
         let chosen = null, title = '', story = '', source = 'rotation', lines = null;
-        try {
-            const ai = await generateAi(day, candidates, null);
+        if (preference.ai_text_enabled) try {
+            const ai = await generateAi(day, candidates, null, preference.language);
             chosen = ai && validateSelection(ai.steps, candidates, null);
             if (chosen && typeof ai.title === 'string' && ai.title.trim() && ai.title.length <= 80
                 && typeof ai.story === 'string' && ai.story.trim() && ai.story.length <= 180
@@ -219,6 +220,20 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
     }
     async function zoneOf(subject) {
         return (await db.value('SELECT time_zone FROM daily_preferences WHERE subject = $1', [subject])) || 'UTC';
+    }
+    async function aiPreference(subject) {
+        const row = await db.maybe('SELECT ai_text_enabled,language FROM daily_preferences WHERE subject=$1', [subject]);
+        return { ai_text_enabled: !!row?.ai_text_enabled, language: row?.language || 'en', text_version: 'quest-ai-text-1' };
+    }
+    async function setAiPreference(subject, enabled, language) {
+        if (typeof enabled !== 'boolean' || !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(language || '')) return null;
+        const at = s.iso();
+        await db.exec(`INSERT INTO daily_preferences(subject,ai_text_enabled,language) VALUES($1,$2,$3)
+            ON CONFLICT(subject) DO UPDATE SET ai_text_enabled=EXCLUDED.ai_text_enabled,language=EXCLUDED.language`,
+        [subject, enabled, language]);
+        await db.exec('INSERT INTO daily_ai_choices(id,subject,enabled,language,text_version,chosen_at) VALUES($1,$2,$3,$4,$5,$6)',
+            [s.newId('qac'), subject, enabled, language, 'quest-ai-text-1', at]);
+        return aiPreference(subject);
     }
     async function recordEvent(tx, event) {
         const subject = personOf(event);
@@ -313,6 +328,6 @@ function createDaily({ s, config, coins, glyphs, fetchImpl = globalThis.fetch, a
         void due();
         return () => { if (timer) clearTimeout(timer); };
     }
-    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, channelQuest, putChannelQuest, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
+    return { ensure, read, publicQuest, progress, streakOf, today, ensurePersonal, resolveStep, channelQuest, putChannelQuest, aiPreference, setAiPreference, refreshAfterEvent, recordEvent, setZone, zoneOf, allTypes, contribute, review, start };
 }
 module.exports = { createDaily, BASE_TYPES, KNOWN_TOPICS, validateSelection, rotation, localDay, validZone, utcDay };

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep personalized AI wording off until the person records an explicit choice and language; choose only guided step kinds for that person.
 - Give guided picture, thread and calendar steps opaque per-person links and an authenticated step reader for the host page.
 - Let a channel owner save a quest made from guided catalogue steps through a default-off API.
 - Add the authenticated, network-origin CORS reader `GET /api/v1/quests/today`; keep progress private to its person.

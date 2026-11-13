@@ -25,9 +25,9 @@ const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 // The product's own places: the main ones carry an icon (phones get them as the bottom tab bar), the rest fold into
 // the navbar's More (Shared 4.22). Search is the navbar's magnifier and What shipped is the footer's.
 const NAV = [
-    { label: 'Quests', href: '/', icon: 'fa-star' },
-    { label: 'Your quest log', href: '/me', icon: 'fa-list-check' },
-    { label: 'How it works', href: '/how-it-works', icon: 'fa-circle-info', more: true },
+    { label: 'Quests', href: '/', icon: 'star' },
+    { label: 'Your quest log', href: '/me', icon: 'steps' },
+    { label: 'How it works', href: '/how-it-works', icon: 'info', more: true },
 ];
 
 const hashes = new Map();
@@ -59,7 +59,7 @@ function renderPage(o) {
         service: 'quest',
         apiBase: NETWORK_URL,
         links: NAV.map((l) => ({ label: l.label, href: l.href, ...(l.icon ? { icon: l.icon } : {}), ...(l.more ? { more: true } : {}), active: pathNow === l.href || pathNow.startsWith(`${l.href}/`) })),
-        appBar: [{ label: 'Quests', href: '/', icon: 'fa-star' }, { label: 'Quest log', href: '/me', icon: 'fa-list-check' }, { label: 'How it works', href: '/how-it-works', icon: 'fa-circle-info' }],   // phones: the bottom tab bar (Shared 4.20)
+        appBar: [{ label: 'Quests', href: '/', icon: 'star' }, { label: 'Quest log', href: '/me', icon: 'steps' }, { label: 'How it works', href: '/how-it-works', icon: 'info' }],   // phones: the bottom tab bar (Shared 4.20)
         history: { type: 'page', title: o.title || SITE_NAME },
         silentLogin: `${o.config.baseUrl}/auth/login?silent=1&next={url}`,
         sessionUrl: '/auth/me',

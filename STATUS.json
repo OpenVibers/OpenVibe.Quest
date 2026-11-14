@@ -8,11 +8,11 @@
   "port": "4980",
   "domain": "openvibe.quest",
   "contracts": "openvibe-contracts v0.419.0",
-  "sdk": "openvibe-sdk v0.167.0",
+  "sdk": "openvibe-sdk v0.168.0",
   "shared": "openvibe-shared v4.247.0",
   "packages": [
     "openvibe-contracts v0.419.0",
-    "openvibe-sdk v0.167.0",
+    "openvibe-sdk v0.168.0",
     "openvibe-shared v4.247.0",
     "openvibe-publishing v1.7.0"
   ],
@@ -49,5 +49,5 @@
     "crawl artifacts"
   ],
   "deployment": "openvibe-ovh: unit openvibe-quest.service on 127.0.0.1:4980 (git checkout /opt/openvibe.quest, env /etc/openvibe/quest.env, database ov_quest), deployed with `sudo ovhost deploy quest`; public at https://openvibe.quest since 2026-10-08.",
-  "updated": "2026-11-13"
+  "updated": "2026-11-14"
 }

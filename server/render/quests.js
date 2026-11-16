@@ -142,11 +142,11 @@ const stateChip = (done, locked = false) => (locked && !done
 function stepLine(step, i, seen) {
     const unit = unitOf(step);
     if (!seen) {
-        return html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 18)}<span>${step.label}</span>${step.count > 1 ? html` <span class="step-count">×${step.count}</span>` : ''}</li>`;
+        return html`<li>${icons.plain(icons.topic(step.event_type, step.site), 20)}<span>${step.label}</span>${step.count > 1 ? html` <span class="step-count">×${step.count}</span>` : ''}</li>`;
     }
     const value = Math.min(seen.get(i) || 0, step.count);
     const text = fraction(value, step.count, unit);
-    return html`<li>${icons.glyph(icons.topic(step.event_type, step.site), 18)}<span>${step.label}</span><span class="step-progress">${bar(value, step.count, text, step.label)}<span class="progress-count">${text}</span></span></li>`;
+    return html`<li>${icons.plain(icons.topic(step.event_type, step.site), 20)}<span>${step.label}</span><span class="step-progress">${bar(value, step.count, text, step.label)}<span class="progress-count">${text}</span></span></li>`;
 }
 
 /**

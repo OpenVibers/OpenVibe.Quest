@@ -42,6 +42,14 @@ function glyph(name, size = 24, approvedSvg = null) {
     if (!MARKS.has(n) && GLYPHS.has(n)) return html`<span class="q-glyph" data-glyph="${n}" aria-hidden="true">${raw(glyphs.svg(n, size))}</span>`;
     return html`<span class="ov-icon" data-icon="${n}" data-size="${size}" aria-hidden="true"></span>`;
 }
+// An icon inside a tile (a step's round tile, a step list's row): the plain glyph whenever the glyph set has it, so a
+// site mark's own ring never sits inside the tile's (the owner, 11-16, on the home's Follow row: "ugly border"; the
+// design rule icons-fill-their-place). A name only the mark set has stays a mark.
+function plain(name, size = 24) {
+    const n = safe(name);
+    if (GLYPHS.has(n)) return html`<span class="q-glyph" data-glyph="${n}" aria-hidden="true">${raw(glyphs.svg(n, size))}</span>`;
+    return glyph(n, size);
+}
 const needsDraft = (eventType, domain) => !TOPICS[eventType] && !SITES[domain];
 
-module.exports = { TOPICS, SITES, GLYPHS, MARKS, safe, topic, site, quest, badge, glyph, needsDraft };
+module.exports = { TOPICS, SITES, GLYPHS, MARKS, safe, topic, site, quest, badge, glyph, plain, needsDraft };

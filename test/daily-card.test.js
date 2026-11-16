@@ -43,6 +43,8 @@ const icons = require('../server/render/quest-icons');
         const asked = Array.from(home.text.matchAll(/class="ov-icon" data-icon="([^"]+)"/g)).map((m) => m[1]);
         const missing = [...new Set(asked.filter((n) => !icons.MARKS.has(n)))];
         assert.deepStrictEqual(missing, [], `site marks that do not exist: ${missing.join(', ')}`);
+        // A step's tile carries the plain glyph, never a site mark's ring inside the tile's (the owner, 11-16: "ugly border").
+        assert.ok(/class="q-daily-ic"><span class="q-glyph"/.test(home.text) && !/class="q-daily-ic"><span class="ov-icon"/.test(home.text), 'step tiles hold plain glyphs');
         // A past day is a row, not a link to its JSON.
         assert.ok(!/<a href="\/api\/v1\/daily\//.test(home.text), 'no page link goes to an API address');
         console.log('daily-card: the card, its three rows, the day in words, one sign-in button; every icon on the home exists');

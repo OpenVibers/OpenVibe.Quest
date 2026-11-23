@@ -138,7 +138,7 @@ function startSubscriptions({ config, port, secret, eventsUrl = config.events.ur
             if (mine.some((x) => x.topic_pattern === topic)) continue;
             const r = await call('POST', '/api/v1/subscriptions', { topic_pattern: topic, endpoint, secret });
             if (!r.ok && r.status !== 409) throw new Error(`subscribing to ${topic}: ${r.status} ${r.body.code || ''}`);
-            if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (${topic} → ${endpoint})`);
+            if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (topic ${topic}, endpoint ${endpoint})`);
         }
     };
     const delays = [0, 10_000, 60_000, 5 * 60_000, 15 * 60_000];
@@ -154,7 +154,7 @@ function startSubscriptions({ config, port, secret, eventsUrl = config.events.ur
     const subscribe = async (topic) => {
         const r = await call('POST', '/api/v1/subscriptions', { topic_pattern: topic, endpoint, secret });
         if (!r.ok && r.status !== 409) throw new Error(`subscribing to ${topic}: ${r.status} ${r.body.code || ''}`);
-        if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (${topic} → ${endpoint})`);
+        if (r.ok) log.log(`[Events consumer] subscription created: ${r.body.id} (topic ${topic}, endpoint ${endpoint})`);
     };
     // Graceful stop: no further attempts (they run again at the next start).
     return { topics, endpoint, subscribe, stop() { stopped = true; if (timer) clearTimeout(timer); timer = null; } };

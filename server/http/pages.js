@@ -179,7 +179,9 @@ ${raw(`<${tag} id="daily-title" class="q-daily-title">`)}${daily.title}${raw(`</
         const [appList, p, approvedGlyphs] = await Promise.all([ctx.appQuests ? ctx.appQuests.listed(12) : [], pulse(), ctx.glyphs.approved()]);
         const daily = signedIn(req) ? await ctx.daily.progress(req.viewer.subject) : await ctx.daily.publicQuest();
         const past = await s.db.many('SELECT day,title FROM daily_quests WHERE day < $1 ORDER BY day DESC LIMIT 14', [daily.date]);
-        const dailyCard = dailyCardOf(req, daily, approvedGlyphs, 'h1');
+        // An h2 on the home too (the 11-23 network crawl found two h1s here): the hero's "Earn badges for what you already
+        // do on OpenVibe" is the page's one h1, what a search result should say about the site.
+        const dailyCard = dailyCardOf(req, daily, approvedGlyphs, 'h2');
         // Earlier days, as a counted fold. A row is the day and the quest's name; it links nowhere (the only address a
         // past day has is its JSON, which is for programs, and is listed on How it works).
         const pastFold = past.length ? html`<details class="q-daily-past"><summary><span>Earlier daily quests</span><span class="q-daily-past-n">${past.length}</span></summary><ul>${past.map((x) => html`<li><time datetime="${x.day}">${dayWords(x.day)}</time><span>${x.title}</span></li>`)}</ul></details>` : '';

@@ -46,9 +46,10 @@ function glyph(name, size = 24, approvedSvg = null) {
 // site mark's own ring never sits inside the tile's (the owner, 11-16, on the home's Follow row: "ugly border"; the
 // design rule icons-fill-their-place). A name only the mark set has stays a mark.
 function plain(name, size = 24) {
-    const n = safe(name);
-    if (GLYPHS.has(n)) return html`<span class="q-glyph" data-glyph="${n}" aria-hidden="true">${raw(glyphs.svg(n, size))}</span>`;
-    return glyph(n, size);
+    // A tile holds a plain glyph, never a site mark's ring (the owner, 11-16: "ugly border"): a step whose kind has no
+    // glyph of its own (a new event type: safe() answers the quest mark) gets the spark (11-23: today's quest drew one).
+    const n = GLYPHS.has(safe(name)) ? safe(name) : 'spark';
+    return html`<span class="q-glyph" data-glyph="${n}" aria-hidden="true">${raw(glyphs.svg(n, size))}</span>`;
 }
 const needsDraft = (eventType, domain) => !TOPICS[eventType] && !SITES[domain];
 

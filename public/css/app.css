@@ -56,7 +56,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .site-group h3 a { color: var(--text-primary, #e6edf7); text-decoration: none; }
 .site-group h3 a:hover { color: var(--accent-light, #60a5fa); }
 .site-group h3 small { flex-basis: 100%; font-weight: 400; font-size: .86rem; color: var(--text-muted, #7386a3); }
-.site-count { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-muted, #7386a3); }
+.site-count { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-muted, #7386a3); }
 .quest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .quest { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; padding: 16px; border-radius: 16px; border: 1px solid var(--border, #1f2d47); background: var(--bg-card, #131c2e); transition: border-color .15s, transform .15s; }
 .quest:hover { border-color: color-mix(in srgb, var(--accent, #3b82f6) 55%, var(--border, #1f2d47)); transform: translateY(-1px); }
@@ -80,7 +80,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .reward-coins.soon { color: var(--text-muted, #7386a3); border-style: dashed; border-color: var(--border-light, #2c3d5c); }
 .reward-badge small { color: var(--text-muted, #7386a3); font-size: .75rem; }
 /* The state in text as well as colour (server/render/quests.js stateChip): Active, or Completed. */
-.quest-state { display: inline-block; font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-secondary, #96a7c2); vertical-align: 1px; }
+.quest-state { display: inline-block; font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-light, #2c3d5c); color: var(--text-secondary, #96a7c2); vertical-align: 1px; }
 .quest-state--active { border-color: var(--info, #38bdf8); color: var(--info-text, var(--info, #38bdf8)); }
 .quest-state--completed { border-color: var(--success, #22c55e); color: var(--success-text, var(--success, #22c55e)); }
 .quest-state--locked { border-color: var(--border-light, #2c3d5c); color: var(--text-muted, #7386a3); }
@@ -191,7 +191,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) tr { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--border, #1f2d47); border-radius: 14px; background: var(--bg-card, var(--bg-secondary, #101828)); }
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td { display: block; min-width: 0; padding: 0; border: 0; overflow-wrap: anywhere; }
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td:first-child { font-weight: 700; color: var(--text-primary, #e6edf7); }
-    .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td[data-label]:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted, #7386a3); }
+    .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td[data-label]:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted, #7386a3); }
     .table-wrap > table:has(thead th:nth-child(3)):has(td[data-label]) td:empty { display: none; }
 }
 
@@ -205,7 +205,7 @@ p.lede { font-size: 1.05rem; color: var(--text-secondary, #96a7c2); max-width: 7
 .q-glyph { display: inline-grid; place-items: center; flex: none; line-height: 0; }
 .q-glyph svg { display: block; }
 .q-daily-kicker { display: grid; gap: 1px; margin: 0; min-width: 0; }
-.q-daily-kicker b { font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-light, #8ab8ff); }
+.q-daily-kicker b { font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-light, #8ab8ff); }
 .q-daily-kicker time { color: var(--text-muted, #7386a3); font-size: .9rem; }
 .q-daily .q-daily-title { margin: 14px 0 6px; font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.15; letter-spacing: -.015em; }
 .q-daily-story { margin: 0; color: var(--text-secondary, #96a7c2); max-width: 62ch; }
